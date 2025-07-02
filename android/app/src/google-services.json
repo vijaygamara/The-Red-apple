@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "550945170420",
-    "project_id": "the-red-apple-82cef",
-    "storage_bucket": "the-red-apple-82cef.firebasestorage.app"
+    "project_number": "839007999760",
+    "project_id": "the-red-apple-28f19",
+    "storage_bucket": "the-red-apple-28f19.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:550945170420:android:5811e39bbc36cbd6574fa1",
+        "mobilesdk_app_id": "1:839007999760:android:779778b1bbadb9ced33795",
         "android_client_info": {
           "package_name": "com.theredapple.the_red_apple"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDvDH56veMtIfz1ap5bcaS8vn_5iNLx3Nc"
+          "current_key": "AIzaSyDsrwgH6aUJ1BB7XFfoQEXgXH3-3Y2-1tM"
         }
       ],
       "services": {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:the_red_apple/SignupPage/signup_screen.dart';
+import 'package:the_red_apple/Teacher_Login_Screen/teacherlogin.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,49 +11,44 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
+    super.initState();
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SignupScreen()),
+        MaterialPageRoute(builder: (context) => const TeacherLogin()),
       );
     });
   }
+
+  @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(height: 70,),
+            SizedBox(height: size.height * 0.1),
             Container(
-              height: 350,
-              width: 350,
-              decoration: BoxDecoration(
-                  image: DecorationImage(
-                      image: AssetImage('Assets/images/red_apple.jpg'))),
-            ),
-            SizedBox(
-              height: 0,
-            ),
-            Text(
-              'The Red Apple Pre - School',
-              style: GoogleFonts.almendra(
-                  fontSize: 22, fontWeight: FontWeight.bold,
-              color: Colors.red
+              height: size.height * 0.4,
+              width: size.width * 0.7,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('Assets/images/red_apple.jpg'),
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
-            SizedBox(
-              height: 300,
-            ),
-            SizedBox(height: 10,),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Loading.....',
               style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             )
           ],
         ),
