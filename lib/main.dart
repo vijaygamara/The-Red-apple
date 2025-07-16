@@ -1,10 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:the_red_apple/Splash_screen/Splash_screen.dart';
+import 'utils/firebase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // Initialize Firebase Storage configuration
+  FirebaseConfig.initializeStorage();
+  
   runApp(MyApp());
 }
 

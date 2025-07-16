@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_database/firebase_database.dart';
 
 class StudentDetail extends StatefulWidget {
   final Map<String, dynamic>? studentData;
@@ -15,13 +14,15 @@ class StudentDetail extends StatefulWidget {
 
 class _StudentDetailState extends State<StudentDetail> {
   final TextEditingController namecontroller = TextEditingController();
+  // final TextEditingController mediumcontroller = TextEditingController();
   final TextEditingController pnamecontroller = TextEditingController();
   final TextEditingController addresscontroller = TextEditingController();
   final TextEditingController phonecontroller = TextEditingController();
 
   String? selectedClass;
-  String? assignedTeacher;
   List<Map<String, String>> classTeacherList = [];
+  List<String> medium = ['English Medium','Gujarati Medium'];
+  String? selectedMedium;
   bool isLoadingClasses = true;
   bool isUpdating = false;
 
@@ -36,43 +37,51 @@ class _StudentDetailState extends State<StudentDetail> {
   }
 
   Future<void> fetchClasses() async {
-    final databaseRef = FirebaseDatabase.instance.ref('classes');
-    final snapshot = await databaseRef.get();
-    List<Map<String, String>> tempList = [];
-    Set<String> seenClasses = {};
-    if (snapshot.value != null) {
-      final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
-      data.forEach((key, value) {
-        String className = value['className'] ?? '';
-        String teacherName = value['teacherName'] ?? '';
+    try {
+      final querySnapshot = await FirebaseFirestore.instance.collection('classes').get();
+      List<Map<String, String>> tempList = [];
+      Set<String> seenClasses = {};
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final className = data['className'] ?? '';
+
         if (className.isNotEmpty && !seenClasses.contains(className)) {
           tempList.add({
             'className': className,
-            'teacherName': teacherName,
           });
           seenClasses.add(className);
         }
+      }
+
+      setState(() {
+        classTeacherList = tempList;
+        isLoadingClasses = false;
       });
+    } catch (e) {
+      debugPrint("Error fetching classes: $e");
+      setState(() {
+        isLoadingClasses = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching classes: $e")),
+      );
     }
-    setState(() {
-      classTeacherList = tempList;
-      isLoadingClasses = false;
-    });
   }
 
   void prefillData(Map<String, dynamic> data) {
     namecontroller.text = data['Student Name'] ?? '';
+    selectedMedium = data['Medium'] ?? '';
     pnamecontroller.text = data['Parents Name'] ?? '';
     addresscontroller.text = data['Address'] ?? '';
     phonecontroller.text = data['Mobile Number'] ?? '';
     selectedClass = data['Class Name'];
-    assignedTeacher = data['Assigned Teacher'];
   }
 
   void saveOrUpdateData() async {
     if (namecontroller.text.isEmpty ||
         selectedClass == null ||
-        assignedTeacher == null ||
+        selectedMedium == 'Medium' ||
         pnamecontroller.text.isEmpty ||
         addresscontroller.text.isEmpty ||
         phonecontroller.text.isEmpty) {
@@ -85,7 +94,7 @@ class _StudentDetailState extends State<StudentDetail> {
     final data = {
       'Student Name': namecontroller.text,
       'Class Name': selectedClass,
-      'Assigned Teacher': assignedTeacher,
+      'Medium': selectedMedium,
       'Parents Name': pnamecontroller.text,
       'Address': addresscontroller.text,
       'Mobile Number': phonecontroller.text,
@@ -99,13 +108,11 @@ class _StudentDetailState extends State<StudentDetail> {
 
     try {
       if (widget.docId != null) {
-        // Update existing document
         await FirebaseFirestore.instance
             .collection('students')
             .doc(widget.docId)
             .update(data);
       } else {
-        // Add new document
         await FirebaseFirestore.instance.collection('students').add(data);
       }
       if (mounted) Navigator.pop(context, data);
@@ -131,7 +138,13 @@ class _StudentDetailState extends State<StudentDetail> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.docId != null ? "Edit Student" : "Add Student")),
+        appBar: AppBar(
+          title: Text(
+            widget.docId != null ? "Edit Student" : "Add Student",
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.red,
+        ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: isLoadingClasses
@@ -142,12 +155,7 @@ class _StudentDetailState extends State<StudentDetail> {
               children: [
                 buildField("Student Name", namecontroller, "Enter Student Name"),
                 const SizedBox(height: 15),
-                Text(
-                  "Class Name",
-                  style: GoogleFonts.alatsi(
-                    fontSize: 19,
-                  ),
-                ),
+                Text("Class Name", style: GoogleFonts.alatsi(fontSize: 19)),
                 Card(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 5,
@@ -169,10 +177,35 @@ class _StudentDetailState extends State<StudentDetail> {
                         onChanged: (value) {
                           setState(() {
                             selectedClass = value;
-                            assignedTeacher = classTeacherList.firstWhere(
-                                  (item) => item['className'] == value,
-                              orElse: () => {'teacherName': ''},
-                            )['teacherName'];
+                            // Removed assignedTeacher logic
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 15,),
+                // Inside build method widget list:
+                Text("Medium", style: GoogleFonts.alatsi(fontSize: 19)),
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedMedium,
+                        isExpanded: true,
+                        hint: Text("Select Medium", style: GoogleFonts.alatsi(fontSize: 16)),
+                        items: medium.map((item) {
+                          return DropdownMenuItem<String>(
+                            value: item,
+                            child: Text(item, style: GoogleFonts.alatsi(fontSize: 16)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedMedium = value;
                           });
                         },
                       ),
@@ -186,12 +219,12 @@ class _StudentDetailState extends State<StudentDetail> {
                 const SizedBox(height: 15),
                 buildField("Mobile Number", phonecontroller, "Enter Phone Number",
                     inputType: TextInputType.number),
-                const SizedBox(height: 50),
+                const SizedBox(height: 100),
                 Center(
                   child: ElevatedButton(
                     onPressed: isUpdating ? null : saveOrUpdateData,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.all(15),
                       shape: RoundedRectangleBorder(

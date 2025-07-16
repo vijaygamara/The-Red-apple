@@ -46,6 +46,8 @@ dependencies:
   overlay_support: ^2.1.0
   firebase_storage: ^12.4.7
   firebase_database: ^11.3.7
+  flutter_image_compress: ^2.1.0
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
