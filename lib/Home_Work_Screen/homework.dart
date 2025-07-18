@@ -69,7 +69,7 @@ class _HomeworkState extends State<Homework> {
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final selectedImages = await picker.pickMultiImage();
-    if (selectedImages != null && selectedImages.isNotEmpty) {
+    if (selectedImages !=null && selectedImages.isNotEmpty) {
       setState(() {
         _images.addAll(selectedImages);
       });
