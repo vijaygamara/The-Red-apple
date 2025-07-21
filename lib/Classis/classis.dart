@@ -15,11 +15,14 @@ class Classis extends StatefulWidget {
 class _ClassisState extends State<Classis> {
   final TextEditingController classcontroller = TextEditingController();
   TimeOfDay? selectedTime;
+  List<String> mediumList = ['English Medium', 'Gujarati Medium'];
+  String? selectedMedium;
 
   @override
   void initState() {
     super.initState();
     if (widget.existingData != null) {
+      selectedMedium = widget.existingData!['medium'];
       classcontroller.text = widget.existingData!['className'] ?? '';
       selectedTime = _parseTime(widget.existingData!['time']);
     }
@@ -48,6 +51,13 @@ class _ClassisState extends State<Classis> {
   }
 
   void saveData() async {
+    if (selectedMedium == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select Medium first')),
+      );
+      return;
+    }
+
     if (classcontroller.text.trim().isEmpty || selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all fields')),
@@ -63,12 +73,14 @@ class _ClassisState extends State<Classis> {
         await collection.doc(widget.docId).update({
           'className': classcontroller.text.trim(),
           'time': formattedTime,
+          'medium': selectedMedium,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
         await collection.add({
           'className': classcontroller.text.trim(),
           'time': formattedTime,
+          'medium': selectedMedium,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
@@ -90,6 +102,8 @@ class _ClassisState extends State<Classis> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isClassEnabled = selectedMedium != null;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -106,20 +120,66 @@ class _ClassisState extends State<Classis> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text("Medium", style: GoogleFonts.alatsi(fontSize: 19)),
+                const SizedBox(height: 8),
+                Card(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedMedium,
+                        isExpanded: true,
+                        hint: Text("Select Medium",
+                            style: GoogleFonts.alatsi(fontSize: 16)),
+                        items: mediumList.map((item) {
+                          return DropdownMenuItem<String>(
+                            value: item,
+                            child:
+                            Text(item, style: GoogleFonts.alatsi(fontSize: 16)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedMedium = value;
+                            // Clear class text when medium changes
+                            classcontroller.clear();
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 Text("Class", style: GoogleFonts.alatsi(fontSize: 19)),
                 const SizedBox(height: 8),
+
+                // Class TextField disabled until Medium selected
                 TextField(
+                  enabled: isClassEnabled,
                   controller: classcontroller,
                   decoration: InputDecoration(
-                    hintText: 'Enter Class Name',
+                    hintText: isClassEnabled
+                        ? 'Enter Class Name'
+                        : 'Select Medium First',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    // greyed out if disabled
+                    filled: !isClassEnabled,
+                    fillColor: isClassEnabled ? Colors.white : Colors.grey.shade200,
                   ),
                 ),
+
                 const SizedBox(height: 20),
+
                 Text('Select Time', style: GoogleFonts.alatsi(fontSize: 20)),
                 const SizedBox(height: 8),
                 Card(
@@ -160,6 +220,7 @@ class _ClassisState extends State<Classis> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 50),
                 Center(
                   child: ElevatedButton(
@@ -187,3 +248,4 @@ class _ClassisState extends State<Classis> {
     );
   }
 }
+

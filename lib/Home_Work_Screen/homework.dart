@@ -18,36 +18,46 @@ class Homework extends StatefulWidget {
 class _HomeworkState extends State<Homework> {
   final TextEditingController _textController = TextEditingController();
   final List<XFile> _images = [];
+
+  String? _selectedMedium;
   String? _selectedClass;
   DateTime? _selectedDate;
   bool _isUploading = false;
 
+  List<String> mediumList = ['English Medium', 'Gujarati Medium'];
   List<String> classList = [];
-  bool isLoadingClasses = true;
+  bool isLoadingClasses = false;
 
   @override
   void initState() {
     super.initState();
-    fetchClasses();
 
     if (widget.homeworkData != null) {
       final data = widget.homeworkData!;
+      _selectedMedium = data['medium'];
       _selectedClass = data['class'];
       _textController.text = data['text'] ?? '';
       _selectedDate = DateTime.tryParse(data['date'] ?? '');
+      if (_selectedMedium != null) fetchClassesByMedium(_selectedMedium!);
     }
   }
 
-  Future<void> fetchClasses() async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance.collection('classes').get();
+  Future<void> fetchClassesByMedium(String medium) async {
+    setState(() {
+      isLoadingClasses = true;
+      classList = [];
+      _selectedClass = null;
+    });
 
-      // debug print for testing fetched classes
-      debugPrint("Classes docs fetched: ${querySnapshot.docs.length}");
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('classes')
+          .where('medium', isEqualTo: medium)
+          .get();
 
       final classes = querySnapshot.docs
-          .map((doc) => (doc.data() as Map<String, dynamic>)['className'] as String?)
-          .where((className) => className != null && className.isNotEmpty)
+          .map((doc) => (doc.data())['className'] as String?)
+          .where((name) => name != null && name.isNotEmpty)
           .cast<String>()
           .toList();
 
@@ -56,7 +66,6 @@ class _HomeworkState extends State<Homework> {
         isLoadingClasses = false;
       });
     } catch (e) {
-      debugPrint('Error fetching classes: $e');
       setState(() {
         isLoadingClasses = false;
       });
@@ -69,7 +78,7 @@ class _HomeworkState extends State<Homework> {
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final selectedImages = await picker.pickMultiImage();
-    if (selectedImages !=null && selectedImages.isNotEmpty) {
+    if (selectedImages != null && selectedImages.isNotEmpty) {
       setState(() {
         _images.addAll(selectedImages);
       });
@@ -77,7 +86,7 @@ class _HomeworkState extends State<Homework> {
   }
 
   Future<void> _pickDate() async {
-    DateTime now = DateTime.now();
+    final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
@@ -105,9 +114,12 @@ class _HomeworkState extends State<Homework> {
   }
 
   Future<void> _uploadHomework() async {
-    if (_selectedClass == null || _selectedDate == null || (_images.isEmpty && _textController.text.trim().isEmpty)) {
+    if (_selectedMedium == null ||
+        _selectedClass == null ||
+        _selectedDate == null ||
+        (_images.isEmpty && _textController.text.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please provide class, date and homework.")),
+        const SnackBar(content: Text("Please fill all fields.")),
       );
       return;
     }
@@ -118,6 +130,7 @@ class _HomeworkState extends State<Homework> {
 
     try {
       final data = {
+        'medium': _selectedMedium,
         'class': _selectedClass,
         'date': _selectedDate!.toIso8601String(),
         'text': _textController.text.trim(),
@@ -141,7 +154,7 @@ class _HomeworkState extends State<Homework> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.docId != null ? "Homework updated successfully!" : "Homework uploaded successfully!"),
+            content: Text(widget.docId != null ? "Homework updated!" : "Homework uploaded!"),
             backgroundColor: Colors.green,
           ),
         );
@@ -150,10 +163,7 @@ class _HomeworkState extends State<Homework> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error uploading homework: $e"),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -167,22 +177,49 @@ class _HomeworkState extends State<Homework> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = Colors.red.shade400;
+    final themeColor = Colors.red;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.docId != null ? 'Edit Homework' : 'Upload Homework',style: TextStyle(
-          fontSize: 25,fontWeight: FontWeight.bold
-        ),),
-        backgroundColor: Colors.red,
+        title: Text(widget.docId != null ? 'Edit Homework' : 'Upload Homework',
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+        backgroundColor: themeColor,
       ),
-      body: isLoadingClasses
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            /// Medium
             Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Select Medium',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: _selectedMedium,
+                  items: mediumList
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedMedium = value;
+                      _selectedClass = null;
+                    });
+                    if (value != null) fetchClassesByMedium(value);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            /// Class
+            isLoadingClasses
+                ? const Center(child: CircularProgressIndicator())
+                : Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
               child: Padding(
@@ -201,6 +238,8 @@ class _HomeworkState extends State<Homework> {
               ),
             ),
             const SizedBox(height: 16),
+
+            /// Date
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -217,6 +256,8 @@ class _HomeworkState extends State<Homework> {
               ),
             ),
             const SizedBox(height: 16),
+
+            /// Images
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -228,6 +269,8 @@ class _HomeworkState extends State<Homework> {
               ),
             ),
             const SizedBox(height: 10),
+
+            /// Preview Images
             _images.isNotEmpty
                 ? SizedBox(
               height: 110,
@@ -265,7 +308,10 @@ class _HomeworkState extends State<Homework> {
               ),
             )
                 : const Text("No image selected", style: TextStyle(color: Colors.grey)),
+
             const SizedBox(height: 16),
+
+            /// Text Field
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -282,6 +328,8 @@ class _HomeworkState extends State<Homework> {
               ),
             ),
             const SizedBox(height: 20),
+
+            /// Upload Button
             ElevatedButton.icon(
               onPressed: _isUploading ? null : _uploadHomework,
               icon: _isUploading

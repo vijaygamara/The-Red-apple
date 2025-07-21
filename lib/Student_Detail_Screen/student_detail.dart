@@ -14,43 +14,49 @@ class StudentDetail extends StatefulWidget {
 
 class _StudentDetailState extends State<StudentDetail> {
   final TextEditingController namecontroller = TextEditingController();
-  // final TextEditingController mediumcontroller = TextEditingController();
   final TextEditingController pnamecontroller = TextEditingController();
   final TextEditingController addresscontroller = TextEditingController();
   final TextEditingController phonecontroller = TextEditingController();
 
   String? selectedClass;
   List<Map<String, String>> classTeacherList = [];
-  List<String> medium = ['English Medium','Gujarati Medium'];
+  List<String> mediumList = ['English Medium', 'Gujarati Medium'];
   String? selectedMedium;
-  bool isLoadingClasses = true;
+
+  bool isLoadingClasses = false;
   bool isUpdating = false;
 
   @override
   void initState() {
     super.initState();
-    fetchClasses().then((_) {
-      if (widget.studentData != null) {
-        prefillData(widget.studentData!);
+    if (widget.studentData != null) {
+      prefillData(widget.studentData!);
+      if (widget.studentData!['Medium'] != null) {
+        fetchClassesByMedium(widget.studentData!['Medium']);
       }
-    });
+    }
   }
 
-  Future<void> fetchClasses() async {
+  Future<void> fetchClassesByMedium(String medium) async {
+    setState(() {
+      isLoadingClasses = true;
+      classTeacherList = [];
+      selectedClass = null;
+    });
+
     try {
-      final querySnapshot = await FirebaseFirestore.instance.collection('classes').get();
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('classes')
+          .where('medium', isEqualTo: medium)
+          .get();
+
       List<Map<String, String>> tempList = [];
-      Set<String> seenClasses = {};
 
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
         final className = data['className'] ?? '';
-
-        if (className.isNotEmpty && !seenClasses.contains(className)) {
-          tempList.add({
-            'className': className,
-          });
-          seenClasses.add(className);
+        if (className.isNotEmpty) {
+          tempList.add({'className': className});
         }
       }
 
@@ -59,7 +65,7 @@ class _StudentDetailState extends State<StudentDetail> {
         isLoadingClasses = false;
       });
     } catch (e) {
-      debugPrint("Error fetching classes: $e");
+      debugPrint("Error fetching filtered classes: $e");
       setState(() {
         isLoadingClasses = false;
       });
@@ -81,7 +87,7 @@ class _StudentDetailState extends State<StudentDetail> {
   void saveOrUpdateData() async {
     if (namecontroller.text.isEmpty ||
         selectedClass == null ||
-        selectedMedium == 'Medium' ||
+        selectedMedium == null ||
         pnamecontroller.text.isEmpty ||
         addresscontroller.text.isEmpty ||
         phonecontroller.text.isEmpty) {
@@ -147,45 +153,14 @@ class _StudentDetailState extends State<StudentDetail> {
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: isLoadingClasses
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
+          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 buildField("Student Name", namecontroller, "Enter Student Name"),
                 const SizedBox(height: 15),
-                Text("Class Name", style: GoogleFonts.alatsi(fontSize: 19)),
-                Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: classTeacherList.any((item) => item['className'] == selectedClass)
-                            ? selectedClass
-                            : null,
-                        isExpanded: true,
-                        hint: Text("Select Class Name", style: GoogleFonts.alatsi(fontSize: 16)),
-                        items: classTeacherList.map((item) {
-                          return DropdownMenuItem<String>(
-                            value: item['className'],
-                            child: Text(item['className'] ?? '', style: GoogleFonts.alatsi(fontSize: 16)),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedClass = value;
-                            // Removed assignedTeacher logic
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 15,),
-                // Inside build method widget list:
+
+                /// Medium Dropdown
                 Text("Medium", style: GoogleFonts.alatsi(fontSize: 19)),
                 Card(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -197,7 +172,7 @@ class _StudentDetailState extends State<StudentDetail> {
                         value: selectedMedium,
                         isExpanded: true,
                         hint: Text("Select Medium", style: GoogleFonts.alatsi(fontSize: 16)),
-                        items: medium.map((item) {
+                        items: mediumList.map((item) {
                           return DropdownMenuItem<String>(
                             value: item,
                             child: Text(item, style: GoogleFonts.alatsi(fontSize: 16)),
@@ -206,19 +181,54 @@ class _StudentDetailState extends State<StudentDetail> {
                         onChanged: (value) {
                           setState(() {
                             selectedMedium = value;
+                            selectedClass = null;
                           });
+                          if (value != null) {
+                            fetchClassesByMedium(value);
+                          }
                         },
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 15),
+
+                /// Class Dropdown
+                Text("Class Name", style: GoogleFonts.alatsi(fontSize: 19)),
+                isLoadingClasses
+                    ? const Center(child: CircularProgressIndicator())
+                    : Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedClass,
+                        isExpanded: true,
+                        hint: Text("Select Class Name", style: GoogleFonts.alatsi(fontSize: 16)),
+                        items: classTeacherList.map((item) {
+                          return DropdownMenuItem<String>(
+                            value: item['className'],
+                            child: Text(item['className'] ?? '', style: GoogleFonts.alatsi(fontSize: 16)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedClass = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 15),
                 buildField("Parent's Name", pnamecontroller, "Enter Parent's Name"),
                 const SizedBox(height: 15),
                 buildField("Address", addresscontroller, "Enter Address", maxLines: 4),
                 const SizedBox(height: 15),
-                buildField("Mobile Number", phonecontroller, "Enter Phone Number",
-                    inputType: TextInputType.number),
+                buildField("Mobile Number", phonecontroller, "Enter Phone Number", inputType: TextInputType.number),
                 const SizedBox(height: 100),
                 Center(
                   child: ElevatedButton(

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:the_red_apple/Classis_Detail_Screen/classis_screen.dart';
 import 'package:the_red_apple/Event_Photo_Screen/event_photo.dart';
 import 'package:the_red_apple/Home_work_Detail/homeworkdetail.dart';
+import 'package:the_red_apple/Result_Entry_Screen/ResultEntryScreen.dart';
 import 'package:the_red_apple/Result_Screen/result_screen.dart';
 import 'package:the_red_apple/Students_Screen/students_screen.dart';
 
 import '../Attendance_Screen/attendancescreen.dart';
+import '../Attendance_View_Screen/attendance_view.dart';
 
 class TeacherDashborad extends StatelessWidget {
   const TeacherDashborad({super.key});
@@ -55,7 +57,7 @@ class TeacherDashborad extends StatelessWidget {
                               width: itemWidth,
                               onTap: (){
                                 Navigator.push(context,
-                                    MaterialPageRoute(builder: (context)=>ResultScreen()));
+                                    MaterialPageRoute(builder: (context)=>ResultEntryScreen(resultData: {},)));
                               }
                           ),
                           _buildCard(
@@ -65,7 +67,7 @@ class TeacherDashborad extends StatelessWidget {
                             width: itemWidth,
                             onTap: (){
                               Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) =>Attendancescreen()));
+                                  MaterialPageRoute(builder: (context) =>AttendanceView()));
                             }
                           ),
                           _buildCard(

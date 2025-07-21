@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ResultScreen extends StatefulWidget {
-  final Map<String, dynamic>? resultsData;
-
-  const ResultScreen({super.key, this.resultsData});
+  const ResultScreen({super.key});
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -14,42 +14,39 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   String? _selectedClass;
+  String? selectedMedium;
+  List<String> mediumList = ['English Medium', 'Gujarati Medium'];
   List<String> classList = [];
-  bool isLoadingClasses = true;
+
+  bool isLoadingClasses = false;
+  bool isUploading = false;
+
   final List<XFile> _images = [];
   final TextEditingController _noteController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    fetchClasses();
+  Future<void> fetchClassesByMedium(String medium) async {
+    setState(() {
+      isLoadingClasses = true;
+    });
 
-    if (widget.resultsData != null) {
-      final data = widget.resultsData!;
-      _selectedClass = data['class'];
-      _noteController.text = data['text'] ?? '';
-    }
-  }
-
-  Future<void> fetchClasses() async {
     try {
-      final querySnapshot = await FirebaseFirestore.instance.collection('classes').get();
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('classes')
+          .where('medium', isEqualTo: medium)
+          .get();
 
       final classes = querySnapshot.docs
-          .map((doc) => (doc.data() as Map<String, dynamic>)['className'] as String?)
-          .where((className) => className != null && className.isNotEmpty)
-          .cast<String>()
+          .map((doc) => doc.data()['className'] as String)
           .toList();
 
       setState(() {
         classList = classes;
+        _selectedClass = null;
         isLoadingClasses = false;
       });
     } catch (e) {
       debugPrint('Error fetching classes: $e');
-      setState(() {
-        isLoadingClasses = false;
-      });
+      setState(() => isLoadingClasses = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load classes: $e')),
       );
@@ -59,10 +56,72 @@ class _ResultScreenState extends State<ResultScreen> {
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final selectedImages = await picker.pickMultiImage();
-    if (selectedImages != null && selectedImages.isNotEmpty) {
+    if (selectedImages.isNotEmpty) {
       setState(() {
         _images.addAll(selectedImages);
       });
+    }
+  }
+
+  Future<List<String>> _uploadImagesToStorage() async {
+    List<String> imageUrls = [];
+    for (var image in _images) {
+      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      Reference ref = FirebaseStorage.instance.ref().child('result_images/$fileName.jpg');
+      await ref.putFile(File(image.path));
+      String downloadUrl = await ref.getDownloadURL();
+      imageUrls.add(downloadUrl);
+    }
+    return imageUrls;
+  }
+
+  void _uploadResult() async {
+    if (selectedMedium == null || selectedMedium!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a medium.')),
+      );
+      return;
+    }
+
+    if (_selectedClass == null || _selectedClass!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a class.')),
+      );
+      return;
+    }
+
+    setState(() => isUploading = true);
+
+    try {
+      List<String> imageUrls = await _uploadImagesToStorage();
+
+      await FirebaseFirestore.instance.collection('results').add({
+        'Class': _selectedClass,
+        'Medium': selectedMedium,
+        'Text': _noteController.text.trim(),
+        'Images': imageUrls,
+        'Timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Result uploaded successfully!')),
+      );
+
+      setState(() {
+        _noteController.clear();
+        _selectedClass = null;
+        selectedMedium = null;
+        _images.clear();
+        classList.clear();
+        isUploading = false;
+      });
+
+      Navigator.pop(context);
+    } catch (e) {
+      setState(() => isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading result: $e')),
+      );
     }
   }
 
@@ -72,36 +131,60 @@ class _ResultScreenState extends State<ResultScreen> {
     super.dispose();
   }
 
-  void _uploadResult() {
-    // TODO: Upload to Firebase logic here
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Result uploaded successfully (dummy)!")),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'Student Results',
-            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-          ),
+          title: const Text('Student Results',
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
           backgroundColor: Colors.red,
         ),
-        body: isLoadingClasses
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dropdown for class
+              Text("Medium",
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
               Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 5,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedMedium,
+                      isExpanded: true,
+                      hint: Text("Select Medium", style: GoogleFonts.alatsi(fontSize: 16)),
+                      items: mediumList.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item,
+                          child: Text(item, style: GoogleFonts.alatsi(fontSize: 16)),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedMedium = value;
+                          _selectedClass = null;
+                          classList = [];
+                        });
+                        if (value != null) {
+                          fetchClassesByMedium(value);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text('Class',
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+              isLoadingClasses
+                  ? const Center(child: Padding(
+                  padding: EdgeInsets.all(10), child: CircularProgressIndicator()))
+                  : Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -121,10 +204,9 @@ class _ResultScreenState extends State<ResultScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
-
-              // Note field
+              Text('Note & Comment',
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
               Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -136,24 +218,21 @@ class _ResultScreenState extends State<ResultScreen> {
                     controller: _noteController,
                     maxLines: 3,
                     decoration: const InputDecoration(
-                      labelText: 'Note or Comment',
                       hintText: 'Enter any remarks or note',
                       border: OutlineInputBorder(),
                     ),
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
-
-              // Button to pick images
               Center(
                 child: ElevatedButton.icon(
                   onPressed: _pickImages,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -165,14 +244,12 @@ class _ResultScreenState extends State<ResultScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
-
-              // GridView of images with delete on tap
               if (_images.isNotEmpty)
-                Container(
+                SizedBox(
                   height: 250,
                   child: GridView.builder(
+                    shrinkWrap: true,
                     itemCount: _images.length,
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
@@ -197,7 +274,7 @@ class _ResultScreenState extends State<ResultScreen> {
                               top: 4,
                               right: 4,
                               child: Container(
-                                decoration: BoxDecoration(
+                                decoration: const BoxDecoration(
                                   color: Colors.black54,
                                   shape: BoxShape.circle,
                                 ),
@@ -214,26 +291,27 @@ class _ResultScreenState extends State<ResultScreen> {
                     },
                   ),
                 ),
-
-              const SizedBox(height: 100),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: _uploadResult,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      "Upload Result",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(height: 50),
+              Center(
+                child: ElevatedButton(
+                  onPressed: isUploading ? null : _uploadResult,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: isUploading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                    "Upload Result",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
+              ),
             ],
           ),
         ),
