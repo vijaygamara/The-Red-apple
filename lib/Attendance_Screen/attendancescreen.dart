@@ -14,8 +14,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String? selectedMedium;
   List<String> mediumList = ['English Medium', 'Gujarati Medium'];
 
-  String? selectedClass;
-  List<String> classList = [];
+  Map<String, dynamic>? selectedClass;
+  List<Map<String, dynamic>> classList = [];
 
   bool isLoadingClasses = false;
   bool isSaving = false;
@@ -53,9 +53,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           .where('medium', isEqualTo: medium)
           .get();
 
-      final classes = snapshot.docs
-          .map((doc) => doc.data()['className'] as String)
-          .toList();
+      final classes = snapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'className': doc['className'] ?? '',
+        };
+      }).toList();
 
       setState(() {
         classList = classes;
@@ -112,7 +115,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final batch = FirebaseFirestore.instance.batch();
       final attendanceCollection = FirebaseFirestore.instance
           .collection('attendance')
-          .doc(selectedClass)
+          .doc(selectedClass!['id'])
           .collection(dateStr);
 
       attendanceMap.forEach((studentId, present) {
@@ -120,7 +123,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         batch.set(docRef, {
           'present': present,
           'studentId': studentId,
-          'class': selectedClass,
+          'class': selectedClass!['className'],
+          'class_id': selectedClass!['id'],
           'medium': selectedMedium,
           'date': dateStr,
         });
@@ -207,16 +211,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField<Map<String, dynamic>>(
                     decoration: const InputDecoration(
                       labelText: 'Select Class',
                       border: OutlineInputBorder(),
                     ),
                     value: selectedClass,
-                    items: classList.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (v) {
+                    items: classList.map((c) {
+                      return DropdownMenuItem<Map<String, dynamic>>(
+                        value: c,
+                        child: Text(c['className'] ?? ''),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
                       setState(() {
-                        selectedClass = v;
+                        selectedClass = value;
                         attendanceMap.clear();
                       });
                     },
@@ -244,14 +253,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               const SizedBox(height: 25),
 
-              // Student List
               if (selectedMedium != null && selectedClass != null)
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('students')
-                      .where('Medium', isEqualTo: selectedMedium)
-                      .where('className', isEqualTo: selectedClass)
-                      .orderBy('Student Name') // Use correct field name here
+                      .where('class_id', isEqualTo: selectedClass!['id'])
+                      .orderBy('Student Name')
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
@@ -289,12 +296,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(studentName,
-                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    ],
+                                  child: Text(
+                                    studentName,
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                                 GestureDetector(

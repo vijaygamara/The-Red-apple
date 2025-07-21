@@ -70,8 +70,11 @@ class _TeacherLoginState extends State<TeacherLogin> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    passwordController.text = "109996";
+    phoneController.text = "9428109996";
 
   }
+
 
   @override
   Widget build(BuildContext context) {

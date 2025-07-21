@@ -18,7 +18,7 @@ class _StudentDetailState extends State<StudentDetail> {
   final TextEditingController addresscontroller = TextEditingController();
   final TextEditingController phonecontroller = TextEditingController();
 
-  String? selectedClass;
+  Map<String, String>? selectedClass;
   List<Map<String, String>> classTeacherList = [];
   List<String> mediumList = ['English Medium', 'Gujarati Medium'];
   String? selectedMedium;
@@ -54,9 +54,11 @@ class _StudentDetailState extends State<StudentDetail> {
 
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
+        final docId = doc.id; // Get document ID
+        print('Document ID: $docId');
         final className = data['className'] ?? '';
         if (className.isNotEmpty) {
-          tempList.add({'className': className});
+          tempList.add({'className': className,"class_id" : docId});
         }
       }
 
@@ -99,7 +101,8 @@ class _StudentDetailState extends State<StudentDetail> {
 
     final data = {
       'Student Name': namecontroller.text,
-      'Class Name': selectedClass,
+      'class_name': selectedClass?['className'] ?? "",
+      "class_id" : selectedClass?['class_id'] ?? "",
       'Medium': selectedMedium,
       'Parents Name': pnamecontroller.text,
       'Address': addresscontroller.text,
@@ -203,19 +206,21 @@ class _StudentDetailState extends State<StudentDetail> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
+                      child: DropdownButton<Map<String, String>>(
                         value: selectedClass,
                         isExpanded: true,
                         hint: Text("Select Class Name", style: GoogleFonts.alatsi(fontSize: 16)),
                         items: classTeacherList.map((item) {
-                          return DropdownMenuItem<String>(
-                            value: item['className'],
+                          return DropdownMenuItem<Map<String, String>>(
+                            value: item,
                             child: Text(item['className'] ?? '', style: GoogleFonts.alatsi(fontSize: 16)),
                           );
                         }).toList(),
-                        onChanged: (value) {
+                        onChanged: (Map<String, String>? value) {
+                          print(value);
                           setState(() {
                             selectedClass = value;
+                            print(selectedClass);
                           });
                         },
                       ),
