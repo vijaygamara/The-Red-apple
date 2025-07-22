@@ -6,15 +6,10 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // ✅ Correct Firebase initialization
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // ✅ Your Firebase custom config
   FirebaseConfig.initializeStorage();
-
   runApp(const MyApp());
 }
 
