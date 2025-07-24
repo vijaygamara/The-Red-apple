@@ -630,7 +630,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     return const Center(child: Text('Error loading students'));
                   }
 
-                  if (!snapshot.hasData) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
@@ -642,6 +642,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     return const Center(child: Text('No students in this class'));
                   }
 
+                  // Initialize attendance map with all students (default to false if not already set)
+                  for (var student in students) {
+                    attendanceMap.putIfAbsent(student.id, () => false);
+                  }
+
                   return ListView.builder(
                     itemCount: students.length,
                     itemBuilder: (context, index) {
@@ -651,24 +656,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isPresent ? Colors.green : Colors.red,
-                            child: Text(
-                              student['Student Name'][0],
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: Text(student['Student Name']),
-                          trailing: Checkbox(
-                            value: isPresent,
-                            onChanged: (value) {
-                              setState(() {
-                                attendanceMap[studentId] = value ?? false;
-                              });
-                            },
-                            activeColor: Colors.green,
-                            checkColor: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: isPresent ? Colors.green : Colors.red,
+                                child: Text(
+                                  student['Student Name'][0],
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(student['Student Name']),
+                              ),
+                              Row(
+                                children: [
+                                  // Present Checkbox
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: isPresent,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            attendanceMap[studentId] = true;
+                                          });
+                                        },
+                                        activeColor: Colors.green,
+                                      ),
+                                      const Text('Present'),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Absent Checkbox
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: !isPresent,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            attendanceMap[studentId] = false;
+                                          });
+                                        },
+                                        activeColor: Colors.red,
+                                      ),
+                                      const Text('Absent'),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       );
