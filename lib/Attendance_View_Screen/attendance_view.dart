@@ -4,6 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../Attendance_Screen/attendancescreen.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../Attendance_Screen/attendancescreen.dart';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../Attendance_Screen/attendancescreen.dart';
+
 class AttendanceView extends StatefulWidget {
   const AttendanceView({super.key});
 
@@ -25,15 +37,48 @@ class _AttendanceViewState extends State<AttendanceView> {
     setState(() => isLoading = true);
     try {
       final snapshot = await FirebaseFirestore.instance.collection('classes').get();
-      setState(() {
-        classList = snapshot.docs.map((doc) {
-          return {
-            'id': doc.id,
-            'className': doc['className'] ?? 'Unnamed',
-            'medium': doc['medium'] ?? '',
-          };
-        }).toList();
-      });
+
+      final List<Map<String, dynamic>> tempList = [];
+
+      for (var doc in snapshot.docs) {
+        final classData = {
+          'id': doc.id,
+          'className': doc['className'] ?? 'Unnamed',
+          'medium': doc['medium'] ?? '',
+        };
+
+        // Get total students count
+        final studentsSnapshot = await FirebaseFirestore.instance
+            .collection('classes')
+            .doc(doc.id)
+            .collection('students')
+            .get();
+
+        final totalStudents = studentsSnapshot.size;
+        classData['total'] = totalStudents;
+
+        // Get today's attendance
+        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final attendanceSnapshot = await FirebaseFirestore.instance
+            .collection('classes')
+            .doc(doc.id)
+            .collection('attendance')
+            .doc(today)
+            .get();
+
+        int present = 0;
+        if (attendanceSnapshot.exists) {
+          final data = attendanceSnapshot.data() as Map<String, dynamic>;
+          present = data.values.where((v) => v == 'Present').length;
+        }
+
+        classData['present'] = present;
+        classData['absent'] = totalStudents - present;
+
+        tempList.add(classData);
+      }
+
+      setState(() => classList = tempList);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading classes: $e')),
@@ -118,14 +163,36 @@ class _AttendanceViewState extends State<AttendanceView> {
                           ),
                           Text(
                             classData['medium'],
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
+                            style: const TextStyle(color: Colors.grey),
                           ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Text(
+                                "Total: ${classData['total']}",
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                "Present: ${classData['present']}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.green[700],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                "Absent: ${classData['absent']}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                            ],
+                          )
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right),
                   ],
                 ),
               ),
@@ -136,6 +203,7 @@ class _AttendanceViewState extends State<AttendanceView> {
     );
   }
 }
+
 
 class ClassAttendanceDetails extends StatefulWidget {
   final Map<String, dynamic> classData;
@@ -268,29 +336,33 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Select Date',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-              value: selectedDate,
-              items: availableDates.map((date) {
-                return DropdownMenuItem<String>(
-                  value: date,
-                  child: Text(
-                    DateFormat('dd MMMM yyyy').format(DateTime.parse(date)),
+          SizedBox(
+            height: 60,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: availableDates.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final date = availableDates[index];
+                final formattedDate = DateFormat('dd MMM').format(DateTime.parse(date));
+                final isSelected = date == selectedDate;
+
+                return ChoiceChip(
+                  label: Text(
+                    formattedDate,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                  selected: isSelected,
+                  selectedColor: Colors.red,
+                  backgroundColor: Colors.grey[200],
+                  onSelected: (_) {
+                    setState(() => selectedDate = date);
+                  },
                 );
-              }).toList(),
-              onChanged: (date) {
-                setState(() {
-                  selectedDate = date;
-                });
               },
             ),
           ),
@@ -324,7 +396,8 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
                     }
 
                     final attendanceData = attendanceSnapshot.data ?? {};
-                    final studentsMap = attendanceData['students'] as Map<String, dynamic>? ?? {};
+                    final studentsMap =
+                        attendanceData['students'] as Map<String, dynamic>? ?? {};
 
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -343,7 +416,8 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
                           ),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: present ? Colors.green : Colors.red,
+                              backgroundColor:
+                              present ? Colors.green : Colors.red,
                               child: Icon(
                                 present ? Icons.check : Icons.close,
                                 color: Colors.white,
@@ -365,7 +439,8 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
                               ),
                             ),
                             trailing: Text(
-                              DateFormat('dd MMM').format(DateTime.parse(selectedDate!)),
+                              DateFormat('dd MMM').format(
+                                  DateTime.parse(selectedDate!)),
                               style: const TextStyle(
                                 color: Colors.grey,
                               ),
