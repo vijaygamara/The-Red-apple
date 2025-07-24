@@ -482,32 +482,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final batch = FirebaseFirestore.instance.batch();
       final attendanceRef = FirebaseFirestore.instance
-          .collection('attendance')
+          .collection('attendance_records')
           .doc(selectedClass!['id'])
-          .collection(dateStr);
+          .collection('dates')
+          .doc(dateStr);
 
+      // Prepare the attendance data
+      Map<String, dynamic> attendanceData = {
+        'class_id': selectedClass!['id'],
+        'class_name': selectedClass!['className'],
+        'medium': selectedMedium,
+        'date': dateStr,
+        'timestamp': FieldValue.serverTimestamp(),
+        'students': {},
+      };
+
+      // Add each student's attendance status
       attendanceMap.forEach((studentId, present) {
-        batch.set(attendanceRef.doc(studentId), {
-          'present': present,
-          'studentId': studentId,
-          'class': selectedClass!['className'],
-          'class_id': selectedClass!['id'],
-          'medium': selectedMedium,
-          'date': dateStr,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+        attendanceData['students'][studentId] = present;
       });
 
-      await batch.commit();
+      // Save the entire day's attendance as a single document
+      await attendanceRef.set(attendanceData);
+
+      // Also update each student's document with the attendance record
+      await Future.wait(attendanceMap.entries.map((entry) async {
+        final studentId = entry.key;
+        final present = entry.value;
+        await FirebaseFirestore.instance
+            .collection('students')
+            .doc(studentId)
+            .collection('attendance')
+            .doc(dateStr)
+            .set({
+          'present': present,
+          'date': dateStr,
+          'class_id': selectedClass!['id'],
+        });
+      }));
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Attendance saved successfully!')),
       );
+
+      // Navigate back after saving
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving attendance: $e')),
       );
     } finally {
-      setState(() => isSaving = false);
+      if (mounted) setState(() => isSaving = false);
     }
   }
 
@@ -522,7 +547,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// Medium Dropdown
+            // Medium Dropdown
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -554,7 +579,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             const SizedBox(height: 15),
 
-            /// Class Dropdown
+            // Class Dropdown
             isLoadingClasses
                 ? const Center(child: CircularProgressIndicator())
                 : Column(
@@ -622,41 +647,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     itemBuilder: (context, index) {
                       final student = students[index];
                       final studentId = student.id;
-                      final isPresent = attendanceMap[studentId];
+                      final isPresent = attendanceMap[studentId] ?? false;
 
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isPresent == true
-                              ? Colors.green
-                              : isPresent == false
-                              ? Colors.red
-                              : Colors.grey,
-                          child: Text(
-                            student['Student Name'][0],
-                            style: const TextStyle(color: Colors.white),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isPresent ? Colors.green : Colors.red,
+                            child: Text(
+                              student['Student Name'][0],
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
-                        ),
-                        title: Text(student['Student Name']),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.check_circle, color: Colors.green),
-                              onPressed: () {
-                                setState(() {
-                                  attendanceMap[studentId] = true;
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.cancel, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  attendanceMap[studentId] = false;
-                                });
-                              },
-                            ),
-                          ],
+                          title: Text(student['Student Name']),
+                          trailing: Checkbox(
+                            value: isPresent,
+                            onChanged: (value) {
+                              setState(() {
+                                attendanceMap[studentId] = value ?? false;
+                              });
+                            },
+                            activeColor: Colors.green,
+                            checkColor: Colors.white,
+                          ),
                         ),
                       );
                     },
