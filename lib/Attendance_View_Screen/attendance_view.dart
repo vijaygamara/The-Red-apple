@@ -4,18 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../Attendance_Screen/attendancescreen.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import '../Attendance_Screen/attendancescreen.dart';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-import '../Attendance_Screen/attendancescreen.dart';
-
 class AttendanceView extends StatefulWidget {
   const AttendanceView({super.key});
 
@@ -49,9 +37,8 @@ class _AttendanceViewState extends State<AttendanceView> {
 
         // Get total students count
         final studentsSnapshot = await FirebaseFirestore.instance
-            .collection('classes')
-            .doc(doc.id)
             .collection('students')
+            .where('class_id', isEqualTo: doc.id)
             .get();
 
         final totalStudents = studentsSnapshot.size;
@@ -60,17 +47,12 @@ class _AttendanceViewState extends State<AttendanceView> {
         // Get today's attendance
         final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
         final attendanceSnapshot = await FirebaseFirestore.instance
-            .collection('classes')
-            .doc(doc.id)
             .collection('attendance')
-            .doc(today)
+            .doc(doc.id)
+            .collection(today)
             .get();
 
-        int present = 0;
-        if (attendanceSnapshot.exists) {
-          final data = attendanceSnapshot.data() as Map<String, dynamic>;
-          present = data.values.where((v) => v == 'Present').length;
-        }
+        int present = attendanceSnapshot.docs.where((doc) => doc['present'] == true).length;
 
         classData['present'] = present;
         classData['absent'] = totalStudents - present;
@@ -204,7 +186,6 @@ class _AttendanceViewState extends State<AttendanceView> {
   }
 }
 
-
 class ClassAttendanceDetails extends StatefulWidget {
   final Map<String, dynamic> classData;
 
@@ -287,6 +268,68 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
     return studentsSnapshot.docs;
   }
 
+  Widget _buildAttendanceSection(String title, List<DocumentSnapshot> students,
+      Map<String, dynamic> attendanceData, bool isPresent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isPresent ? Colors.green : Colors.red,
+            ),
+          ),
+        ),
+        ...students.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final name = data['Student Name'] ?? 'Unknown';
+
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: isPresent ? Colors.green : Colors.red,
+                child: Icon(
+                  isPresent ? Icons.check : Icons.close,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                name,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Text(
+                isPresent ? 'Present' : 'Absent',
+                style: TextStyle(
+                  color: isPresent ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              trailing: Text(
+                DateFormat('dd MMM').format(DateTime.parse(selectedDate!)),
+                style: const TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -336,33 +379,29 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
               ),
             ),
           ),
-          SizedBox(
-            height: 60,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: availableDates.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final date = availableDates[index];
-                final formattedDate = DateFormat('dd MMM').format(DateTime.parse(date));
-                final isSelected = date == selectedDate;
-
-                return ChoiceChip(
-                  label: Text(
-                    formattedDate,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.w500,
-                    ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Select Date',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              value: selectedDate,
+              items: availableDates.map((date) {
+                return DropdownMenuItem<String>(
+                  value: date,
+                  child: Text(
+                    DateFormat('dd MMMM yyyy').format(DateTime.parse(date)),
                   ),
-                  selected: isSelected,
-                  selectedColor: Colors.red,
-                  backgroundColor: Colors.grey[200],
-                  onSelected: (_) {
-                    setState(() => selectedDate = date);
-                  },
                 );
+              }).toList(),
+              onChanged: (date) {
+                setState(() {
+                  selectedDate = date;
+                });
               },
             ),
           ),
@@ -396,58 +435,37 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
                     }
 
                     final attendanceData = attendanceSnapshot.data ?? {};
-                    final studentsMap =
-                        attendanceData['students'] as Map<String, dynamic>? ?? {};
+                    final studentsMap = attendanceData['students'] as Map<String, dynamic>? ?? {};
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final doc = docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name = data['Student Name'] ?? 'Unknown';
-                        final present = studentsMap[doc.id] == true;
+                    // Split students into present and absent
+                    final presentStudents = docs.where((doc) {
+                      return studentsMap[doc.id] == true;
+                    }).toList();
 
-                        return Card(
-                          elevation: 2,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    final absentStudents = docs.where((doc) {
+                      return studentsMap[doc.id] != true;
+                    }).toList();
+
+                    return SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Present Students Section
+                          _buildAttendanceSection(
+                            'Present Students (${presentStudents.length})',
+                            presentStudents,
+                            attendanceData,
+                            true,
                           ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                              present ? Colors.green : Colors.red,
-                              child: Icon(
-                                present ? Icons.check : Icons.close,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            title: Text(
-                              name,
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: Text(
-                              present ? 'Present' : 'Absent',
-                              style: TextStyle(
-                                color: present ? Colors.green : Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            trailing: Text(
-                              DateFormat('dd MMM').format(
-                                  DateTime.parse(selectedDate!)),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                              ),
-                            ),
+
+                          // Absent Students Section
+                          _buildAttendanceSection(
+                            'Absent Students (${absentStudents.length})',
+                            absentStudents,
+                            attendanceData,
+                            false,
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     );
                   },
                 );
