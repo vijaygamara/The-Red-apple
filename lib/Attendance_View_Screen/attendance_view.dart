@@ -47,12 +47,17 @@ class _AttendanceViewState extends State<AttendanceView> {
         // Get today's attendance
         final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
         final attendanceSnapshot = await FirebaseFirestore.instance
-            .collection('attendance')
+            .collection('attendance_records')
             .doc(doc.id)
-            .collection(today)
+            .collection('daily_records')
+            .where('date', isEqualTo: today)
             .get();
 
-        int present = attendanceSnapshot.docs.where((doc) => doc['present'] == true).length;
+        int present = 0;
+        if (attendanceSnapshot.docs.isNotEmpty) {
+          final students = attendanceSnapshot.docs.first['students'] as Map<String, dynamic>? ?? {};
+          present = students.values.where((v) => v['present'] == true).length;
+        }
 
         classData['present'] = present;
         classData['absent'] = totalStudents - present;
@@ -186,6 +191,7 @@ class _AttendanceViewState extends State<AttendanceView> {
   }
 }
 
+
 class ClassAttendanceDetails extends StatefulWidget {
   final Map<String, dynamic> classData;
 
@@ -198,140 +204,252 @@ class ClassAttendanceDetails extends StatefulWidget {
 class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
   List<String> availableDates = [];
   bool isLoading = false;
-  String? selectedDate;
+  DateTime selectedDate = DateTime.now();
+  List<DocumentSnapshot> classStudents = [];
+  Map<String, dynamic> attendanceData = {};
 
   @override
   void initState() {
     super.initState();
-    fetchAttendanceDates();
+    _loadInitialData();
   }
 
-  Future<void> fetchAttendanceDates() async {
+  Future<void> _loadInitialData() async {
+    await _fetchClassStudents();
+    await _fetchAttendanceDates();
+    await _fetchAttendanceForSelectedDate();
+  }
+
+  Future<void> _fetchClassStudents() async {
     setState(() => isLoading = true);
     try {
       final snapshot = await FirebaseFirestore.instance
-          .collection('attendance_records')
-          .doc(widget.classData['id'])
-          .collection('dates')
-          .orderBy('date', descending: true)
+          .collection('students')
+          .where('class_id', isEqualTo: widget.classData['id'])
+          .orderBy('Student Name')
           .get();
 
       setState(() {
-        availableDates = snapshot.docs.map((doc) => doc.id).toList();
-        if (availableDates.isNotEmpty) {
-          selectedDate = availableDates.first;
-        }
+        classStudents = snapshot.docs;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading attendance dates: $e')),
-      );
+      _showError('Error loading students: $e');
     } finally {
       setState(() => isLoading = false);
     }
   }
 
-  Future<Map<String, dynamic>> fetchAttendanceData(String date) async {
+  Future<void> _fetchAttendanceDates() async {
+    setState(() => isLoading = true);
     try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('attendance_records')
+          .doc(widget.classData['id'])
+          .collection('daily_records')
+          .orderBy('date', descending: true)
+          .get();
+
+      setState(() {
+        availableDates = snapshot.docs.map((doc) => doc.id).toList();
+      });
+    } catch (e) {
+      _showError('Error loading attendance dates: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _fetchAttendanceForSelectedDate() async {
+    if (classStudents.isEmpty) return;
+
+    setState(() => isLoading = true);
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
       final doc = await FirebaseFirestore.instance
           .collection('attendance_records')
           .doc(widget.classData['id'])
-          .collection('dates')
-          .doc(date)
+          .collection('daily_records')
+          .doc(dateStr)
           .get();
 
-      return doc.data() ?? {};
+      setState(() {
+        attendanceData = doc.exists ? doc.data() ?? {} : {};
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading attendance: $e')),
-      );
-      return {};
+      _showError('Error loading attendance: $e');
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
-  Future<List<DocumentSnapshot>> fetchStudentsWithAttendance(String date) async {
-    final attendanceData = await fetchAttendanceData(date);
-    if (attendanceData.isEmpty || !attendanceData.containsKey('students')) {
-      return [];
-    }
-
-    final studentsMap = attendanceData['students'] as Map<String, dynamic>;
-    final studentIds = studentsMap.keys.toList();
-
-    if (studentIds.isEmpty) return [];
-
-    final studentsSnapshot = await FirebaseFirestore.instance
-        .collection('students')
-        .where(FieldPath.documentId, whereIn: studentIds)
-        .get();
-
-    return studentsSnapshot.docs;
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
-  Widget _buildAttendanceSection(String title, List<DocumentSnapshot> students,
-      Map<String, dynamic> attendanceData, bool isPresent) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isPresent ? Colors.green : Colors.red,
+  Widget _buildDateChip(DateTime date) {
+    final isSelected = DateFormat('yyyy-MM-dd').format(date) ==
+        DateFormat('yyyy-MM-dd').format(selectedDate);
+    final isToday = DateFormat('yyyy-MM-dd').format(date) ==
+        DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => selectedDate = date);
+        _fetchAttendanceForSelectedDate();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.red : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              DateFormat('EEE').format(date),
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+            Text(
+              DateFormat('dd').format(date),
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            if (isToday)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStudentList() {
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (classStudents.isEmpty) return const Center(child: Text("No students in this class"));
+
+    final studentsMap = attendanceData['students'] as Map<String, dynamic>? ?? {};
+    final presentCount = studentsMap.values.where((v) => v['present'] == true).length;
+    final absentCount = classStudents.length - presentCount;
+
+    return Column(
+      children: [
+        // Attendance Summary
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildSummaryItem('Total', classStudents.length, Colors.blue),
+              _buildSummaryItem('Present', presentCount, Colors.green),
+              _buildSummaryItem('Absent', absentCount, Colors.red),
+            ],
           ),
         ),
-        ...students.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final name = data['Student Name'] ?? 'Unknown';
 
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: isPresent ? Colors.green : Colors.red,
-                child: Icon(
-                  isPresent ? Icons.check : Icons.close,
-                  color: Colors.white,
-                  size: 20,
+        // Student List
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: classStudents.length,
+          itemBuilder: (context, index) {
+            final student = classStudents[index];
+            final studentData = student.data() as Map<String, dynamic>;
+            final isPresent = studentsMap[student.id]?['present'] ?? false;
+
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: isPresent ? Colors.green[100] : Colors.red[100],
+                  child: Icon(
+                    isPresent ? Icons.check : Icons.close,
+                    color: isPresent ? Colors.green : Colors.red,
+                  ),
+                ),
+                title: Text(
+                  studentData['Student Name'] ?? 'Unknown',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                // subtitle: Text(
+                //   'ID: ${student.id}',
+                //   style: const TextStyle(fontSize: 12),
+                // ),
+                trailing: Text(
+                  isPresent ? 'Present' : 'Absent',
+                  style: TextStyle(
+                    color: isPresent ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              title: Text(
-                name,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              subtitle: Text(
-                isPresent ? 'Present' : 'Absent',
-                style: TextStyle(
-                  color: isPresent ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              trailing: Text(
-                DateFormat('dd MMM').format(DateTime.parse(selectedDate!)),
-                style: const TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
+            );
+          },
+        ),
       ],
     );
   }
 
+  Widget _buildSummaryItem(String title, int count, Color color) {
+    return Column(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          count.toString(),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<DateTime> _generateDateRange() {
+    final now = DateTime.now();
+    final startDate = DateTime(now.year, now.month - 1, now.day); // Last month
+    final endDate = now.add(const Duration(days: 7)); // Next week
+    final days = endDate.difference(startDate).inDays;
+
+    return List.generate(days, (i) => startDate.add(Duration(days: i)));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dateRange = _generateDateRange();
+    final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -342,134 +460,62 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
       ),
       body: Column(
         children: [
+          // Class Info
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.classData['className'],
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            widget.classData['medium'],
-                            style: const TextStyle(
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Select Date',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-              value: selectedDate,
-              items: availableDates.map((date) {
-                return DropdownMenuItem<String>(
-                  value: date,
-                  child: Text(
-                    DateFormat('dd MMMM yyyy').format(DateTime.parse(date)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.classData['className'],
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
-                );
-              }).toList(),
-              onChanged: (date) {
-                setState(() {
-                  selectedDate = date;
-                });
-              },
+                ),
+                Text(
+                  widget.classData['medium'],
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+
+          // Horizontal Date Picker
+          SizedBox(
+            height: 70,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: dateRange.map(_buildDateChip).toList(),
+            ),
+          ),
+
+          // Selected Date
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              DateFormat('EEEE, MMMM d, yyyy').format(selectedDate),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // Student List
           Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : availableDates.isEmpty
-                ? const Center(child: Text("No attendance records found"))
-                : selectedDate == null
-                ? const Center(child: Text("Select a date"))
-                : FutureBuilder<List<DocumentSnapshot>>(
-              future: fetchStudentsWithAttendance(selectedDate!),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                final docs = snapshot.data ?? [];
-                if (docs.isEmpty) {
-                  return const Center(child: Text('No attendance data for selected date'));
-                }
-
-                return FutureBuilder<Map<String, dynamic>>(
-                  future: fetchAttendanceData(selectedDate!),
-                  builder: (context, attendanceSnapshot) {
-                    if (attendanceSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final attendanceData = attendanceSnapshot.data ?? {};
-                    final studentsMap = attendanceData['students'] as Map<String, dynamic>? ?? {};
-
-                    // Split students into present and absent
-                    final presentStudents = docs.where((doc) {
-                      return studentsMap[doc.id] == true;
-                    }).toList();
-
-                    final absentStudents = docs.where((doc) {
-                      return studentsMap[doc.id] != true;
-                    }).toList();
-
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          // Present Students Section
-                          _buildAttendanceSection(
-                            'Present Students (${presentStudents.length})',
-                            presentStudents,
-                            attendanceData,
-                            true,
-                          ),
-
-                          // Absent Students Section
-                          _buildAttendanceSection(
-                            'Absent Students (${absentStudents.length})',
-                            absentStudents,
-                            attendanceData,
-                            false,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  if (availableDates.isNotEmpty && !availableDates.contains(dateStr))
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text("No attendance recorded for this date"),
+                    ),
+                  _buildStudentList(),
+                ],
+              ),
             ),
           ),
         ],

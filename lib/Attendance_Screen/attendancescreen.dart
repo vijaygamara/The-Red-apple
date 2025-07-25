@@ -493,23 +493,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
 
     try {
+      // Create a batch for atomic writes
       final batch = FirebaseFirestore.instance.batch();
-      final attendanceRef = FirebaseFirestore.instance
-          .collection('attendance')
-          .doc(selectedClass!['id'])
-          .collection(dateStr);
 
+      // Main attendance record document
+      final dailyRecordRef = FirebaseFirestore.instance
+          .collection('attendance_records')
+          .doc(selectedClass!['id'])
+          .collection('daily_records')
+          .doc(dateStr);
+
+      // Prepare the attendance data
+      Map<String, dynamic> attendanceData = {
+        'date': dateStr,
+        'class': selectedClass!['className'],
+        'class_id': selectedClass!['id'],
+        'medium': selectedMedium,
+        'timestamp': FieldValue.serverTimestamp(),
+        'students': {},
+      };
+
+      // Add each student's attendance status
       attendanceMap.forEach((studentId, present) {
-        batch.set(attendanceRef.doc(studentId), {
+        attendanceData['students'][studentId] = {
           'present': present,
-          'studentId': studentId,
-          'class': selectedClass!['className'],
-          'class_id': selectedClass!['id'],
-          'medium': selectedMedium,
-          'date': dateStr,
           'timestamp': FieldValue.serverTimestamp(),
-        });
+        };
       });
+
+      // Set the main document
+      batch.set(dailyRecordRef, attendanceData);
 
       await batch.commit();
       ScaffoldMessenger.of(context).showSnackBar(
