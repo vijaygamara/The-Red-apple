@@ -388,12 +388,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   bool isLoadingClasses = false;
   bool isSaving = false;
-  bool isLoadingStudents = false;
 
   late TextEditingController dateController;
 
   final List<String> mediumList = ['English Medium', 'Gujarati Medium'];
-  Stream<QuerySnapshot>? studentsStream;
+  final Stream<QuerySnapshot> studentsStream = FirebaseFirestore.instance
+      .collection('students')
+      .orderBy('Student Name')
+      .snapshots();
 
   @override
   void initState() {
@@ -444,21 +446,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _fetchStudentsForClass(String classId) {
-    setState(() {
-      isLoadingStudents = true;
-      attendanceMap.clear();
-    });
-
-    studentsStream = FirebaseFirestore.instance
-        .collection('students')
-        .where('class_id', isEqualTo: classId)
-        .orderBy('Student Name')
-        .snapshots();
-
-    setState(() => isLoadingStudents = false);
-  }
-
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -493,47 +480,59 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
 
     try {
-      // Create a batch for atomic writes
       final batch = FirebaseFirestore.instance.batch();
-
-      // Main attendance record document
-      final dailyRecordRef = FirebaseFirestore.instance
+      final attendanceRef = FirebaseFirestore.instance
           .collection('attendance_records')
           .doc(selectedClass!['id'])
-          .collection('daily_records')
+          .collection('dates')
           .doc(dateStr);
 
       // Prepare the attendance data
       Map<String, dynamic> attendanceData = {
-        'date': dateStr,
-        'class': selectedClass!['className'],
         'class_id': selectedClass!['id'],
+        'class_name': selectedClass!['className'],
         'medium': selectedMedium,
+        'date': dateStr,
         'timestamp': FieldValue.serverTimestamp(),
         'students': {},
       };
 
       // Add each student's attendance status
       attendanceMap.forEach((studentId, present) {
-        attendanceData['students'][studentId] = {
-          'present': present,
-          'timestamp': FieldValue.serverTimestamp(),
-        };
+        attendanceData['students'][studentId] = present;
       });
 
-      // Set the main document
-      batch.set(dailyRecordRef, attendanceData);
+      // Save the entire day's attendance as a single document
+      await attendanceRef.set(attendanceData);
 
-      await batch.commit();
+      // Also update each student's document with the attendance record
+      await Future.wait(attendanceMap.entries.map((entry) async {
+        final studentId = entry.key;
+        final present = entry.value;
+        await FirebaseFirestore.instance
+            .collection('students')
+            .doc(studentId)
+            .collection('attendance')
+            .doc(dateStr)
+            .set({
+          'present': present,
+          'date': dateStr,
+          'class_id': selectedClass!['id'],
+        });
+      }));
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Attendance saved successfully!')),
       );
+
+      // Navigate back after saving
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving attendance: $e')),
       );
     } finally {
-      setState(() => isSaving = false);
+      if (mounted) setState(() => isSaving = false);
     }
   }
 
@@ -548,7 +547,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// Medium Dropdown
+            // Medium Dropdown
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -580,7 +579,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             const SizedBox(height: 15),
 
-            /// Class Dropdown
+            // Class Dropdown
             isLoadingClasses
                 ? const Center(child: CircularProgressIndicator())
                 : Column(
@@ -601,12 +600,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     );
                   }).toList(),
                   onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        selectedClass = value;
-                        _fetchStudentsForClass(value['id']);
-                      });
-                    }
+                    setState(() {
+                      selectedClass = value;
+                      attendanceMap.clear();
+                    });
                   },
                 ),
               ],
@@ -626,63 +623,91 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Expanded(
               child: selectedClass == null
                   ? const Center(child: Text('Select class to load students'))
-                  : isLoadingStudents
-                  ? const Center(child: CircularProgressIndicator())
                   : StreamBuilder<QuerySnapshot>(
                 stream: studentsStream,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
+                    return const Center(child: Text('Error loading students'));
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text('No students found'));
+                  final students = snapshot.data!.docs.where((doc) {
+                    return doc['class_id'] == selectedClass!['id'];
+                  }).toList();
+
+                  if (students.isEmpty) {
+                    return const Center(child: Text('No students in this class'));
+                  }
+
+                  // Initialize attendance map with all students (default to false if not already set)
+                  for (var student in students) {
+                    attendanceMap.putIfAbsent(student.id, () => false);
                   }
 
                   return ListView.builder(
-                    itemCount: snapshot.data!.docs.length,
+                    itemCount: students.length,
                     itemBuilder: (context, index) {
-                      final student = snapshot.data!.docs[index];
+                      final student = students[index];
                       final studentId = student.id;
-                      final isPresent = attendanceMap[studentId];
+                      final isPresent = attendanceMap[studentId] ?? false;
 
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isPresent == true
-                              ? Colors.green
-                              : isPresent == false
-                              ? Colors.red
-                              : Colors.grey,
-                          child: Text(
-                            student['Student Name'][0],
-                            style: const TextStyle(color: Colors.white),
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: isPresent ? Colors.green : Colors.red,
+                                child: Text(
+                                  student['Student Name'][0],
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(student['Student Name']),
+                              ),
+                              Row(
+                                children: [
+                                  // Present Checkbox
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: isPresent,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            attendanceMap[studentId] = true;
+                                          });
+                                        },
+                                        activeColor: Colors.green,
+                                      ),
+                                      const Text('Present'),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Absent Checkbox
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: !isPresent,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            attendanceMap[studentId] = false;
+                                          });
+                                        },
+                                        activeColor: Colors.red,
+                                      ),
+                                      const Text('Absent'),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        title: Text(student['Student Name']),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.check_circle, color: Colors.green),
-                              onPressed: () {
-                                setState(() {
-                                  attendanceMap[studentId] = true;
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.cancel, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  attendanceMap[studentId] = false;
-                                });
-                              },
-                            ),
-                          ],
                         ),
                       );
                     },

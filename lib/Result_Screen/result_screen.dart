@@ -1,3 +1,4 @@
+// Updated ResultScreen with Edit Capability
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -6,7 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({super.key});
+  final Map<String, dynamic>? existingData;
+  final String? docId;
+
+  const ResultScreen({super.key, this.existingData, this.docId});
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -22,6 +26,7 @@ class _ResultScreenState extends State<ResultScreen> {
   bool isUploading = false;
 
   final List<XFile> _images = [];
+  List<String> existingImageUrls = [];
   final TextEditingController _noteController = TextEditingController();
 
   Future<void> fetchClassesByMedium(String medium) async {
@@ -41,7 +46,6 @@ class _ResultScreenState extends State<ResultScreen> {
 
       setState(() {
         classList = classes;
-        _selectedClass = null;
         isLoadingClasses = false;
       });
     } catch (e) {
@@ -64,7 +68,7 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<List<String>> _uploadImagesToStorage() async {
-    List<String> imageUrls = [];
+    List<String> imageUrls = List.from(existingImageUrls);
     for (var image in _images) {
       String fileName = DateTime.now().millisecondsSinceEpoch.toString();
       Reference ref = FirebaseStorage.instance.ref().child('result_images/$fileName.jpg');
@@ -95,16 +99,25 @@ class _ResultScreenState extends State<ResultScreen> {
     try {
       List<String> imageUrls = await _uploadImagesToStorage();
 
-      await FirebaseFirestore.instance.collection('results').add({
+      final data = {
         'Class': _selectedClass,
         'Medium': selectedMedium,
         'Text': _noteController.text.trim(),
         'Images': imageUrls,
         'Timestamp': FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (widget.docId != null) {
+        await FirebaseFirestore.instance
+            .collection('results')
+            .doc(widget.docId)
+            .update(data);
+      } else {
+        await FirebaseFirestore.instance.collection('results').add(data);
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Result uploaded successfully!')),
+        const SnackBar(content: Text('Result saved successfully!')),
       );
 
       setState(() {
@@ -112,6 +125,7 @@ class _ResultScreenState extends State<ResultScreen> {
         _selectedClass = null;
         selectedMedium = null;
         _images.clear();
+        existingImageUrls.clear();
         classList.clear();
         isUploading = false;
       });
@@ -120,8 +134,21 @@ class _ResultScreenState extends State<ResultScreen> {
     } catch (e) {
       setState(() => isUploading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading result: $e')),
+        SnackBar(content: Text('Error saving result: $e')),
       );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingData != null) {
+      final data = widget.existingData!;
+      _selectedClass = data['Class'];
+      selectedMedium = data['Medium'];
+      _noteController.text = data['Text'] ?? '';
+      existingImageUrls = List<String>.from(data['Images'] ?? []);
+      fetchClassesByMedium(selectedMedium ?? '');
     }
   }
 
@@ -137,8 +164,10 @@ class _ResultScreenState extends State<ResultScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Student Results',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+          title: Text(
+            widget.docId != null ? 'Edit Result' : 'Student Results',
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          ),
           backgroundColor: Colors.red,
         ),
         body: SingleChildScrollView(
@@ -146,8 +175,7 @@ class _ResultScreenState extends State<ResultScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Medium",
-                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text("Medium", style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 5,
@@ -169,25 +197,19 @@ class _ResultScreenState extends State<ResultScreen> {
                           selectedMedium = value;
                           _selectedClass = null;
                           classList = [];
+                          fetchClassesByMedium(value!);
                         });
-                        if (value != null) {
-                          fetchClassesByMedium(value);
-                        }
                       },
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 15),
-              Text('Class',
-                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Class', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
               isLoadingClasses
-                  ? const Center(child: Padding(
-                  padding: EdgeInsets.all(10), child: CircularProgressIndicator()))
+                  ? const Center(child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator()))
                   : Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -197,20 +219,15 @@ class _ResultScreenState extends State<ResultScreen> {
                       border: OutlineInputBorder(),
                     ),
                     value: _selectedClass,
-                    items: classList
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
+                    items: classList.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (v) => setState(() => _selectedClass = v),
                   ),
                 ),
               ),
               const SizedBox(height: 25),
-              Text('Note & Comment',
-                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Note & Comment', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
               Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -231,64 +248,26 @@ class _ResultScreenState extends State<ResultScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.add_photo_alternate),
-                  label: const Text(
-                    "Select Results Images",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  label: const Text("Select Results Images",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 25),
-              if (_images.isNotEmpty)
+              if (existingImageUrls.isNotEmpty || _images.isNotEmpty)
                 SizedBox(
                   height: 250,
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    itemCount: _images.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _images.removeAt(index);
-                          });
-                        },
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.file(
-                              File(_images[index].path),
-                              fit: BoxFit.cover,
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  child: GridView.count(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    children: [
+                      ...existingImageUrls.map((url) => Image.network(url, fit: BoxFit.cover)),
+                      ..._images.map((xfile) => Image.file(File(xfile.path), fit: BoxFit.cover)),
+                    ],
                   ),
                 ),
               const SizedBox(height: 50),
@@ -298,18 +277,13 @@ class _ResultScreenState extends State<ResultScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 14, horizontal: 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: isUploading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    "Upload Result",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                      : Text(widget.docId != null ? "Update Result" : "Upload Result",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
