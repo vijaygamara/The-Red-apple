@@ -1,8 +1,8 @@
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../utils/image_utils.dart';
 
 class Homework extends StatefulWidget {
@@ -90,7 +90,7 @@ class _HomeworkState extends State<Homework> {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
-      firstDate: now,
+      firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
     if (pickedDate != null) {
@@ -189,7 +189,7 @@ class _HomeworkState extends State<Homework> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// Medium
+            /// Medium Dropdown
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -216,7 +216,7 @@ class _HomeworkState extends State<Homework> {
             ),
             const SizedBox(height: 16),
 
-            /// Class
+            /// Class Dropdown
             isLoadingClasses
                 ? const Center(child: CircularProgressIndicator())
                 : Card(
@@ -239,7 +239,7 @@ class _HomeworkState extends State<Homework> {
             ),
             const SizedBox(height: 16),
 
-            /// Date
+            /// Date Picker
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -257,7 +257,7 @@ class _HomeworkState extends State<Homework> {
             ),
             const SizedBox(height: 16),
 
-            /// Images
+            /// Image Picker
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
@@ -270,7 +270,7 @@ class _HomeworkState extends State<Homework> {
             ),
             const SizedBox(height: 10),
 
-            /// Preview Images
+            /// Image Preview
             _images.isNotEmpty
                 ? SizedBox(
               height: 110,
@@ -311,7 +311,7 @@ class _HomeworkState extends State<Homework> {
 
             const SizedBox(height: 16),
 
-            /// Text Field
+            /// Homework Text
             Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,

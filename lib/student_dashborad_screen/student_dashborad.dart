@@ -19,12 +19,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int _selectedIndex = 0;
 
   List<Widget> get _screens => [
-    const AttendanceScreen(),
-    const HomeworkScreen(),
-    const ResultScreen(),
-    const EventPhotosScreen(),
-    ProfileScreen(studentData: widget.studentData), // ✅ works now
+    AttendanceScreen(studentData: widget.studentDat,), // You can also pass studentData here later if needed
+    HomeworkScreen(studentData: widget.studentData), // ✅ fixed
+    ResultScreen(studentData: widget.studentData,),
+    EventPhotosScreen(),
+    ProfileScreen(studentData: widget.studentData),
   ];
+
 
 
   final List<IconData> _icons = [
@@ -49,13 +50,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
     double itemWidth = width / _icons.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _labels[_selectedIndex],
-          style: GoogleFonts.poppins(),
-        ),
-        centerTitle: true,
-      ),
+      // appBar: AppBar(
+      //   title: Text(
+      //     _labels[_selectedIndex],
+      //     style: GoogleFonts.poppins(),
+      //   ),
+      //   centerTitle: true,
+      // ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: Stack(
         alignment: Alignment.bottomCenter,
