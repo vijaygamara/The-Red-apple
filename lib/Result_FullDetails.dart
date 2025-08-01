@@ -12,6 +12,15 @@ class ResultFulldetails extends StatefulWidget {
 }
 
 class _ResultFulldetailsState extends State<ResultFulldetails> {
+  void _openFullScreenImage(String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenImageView(imageUrl: imageUrl),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final images = List<String>.from(widget.resultData['Images'] ?? []);
@@ -133,25 +142,28 @@ class _ResultFulldetailsState extends State<ResultFulldetails> {
                       scrollDirection: Axis.horizontal,
                       itemCount: images.length,
                       itemBuilder: (context, index) {
-                        return Container(
-                          margin: const EdgeInsets.only(right: 14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              )
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.network(
-                              images[index],
-                              width: 160,
-                              height: 220,
-                              fit: BoxFit.cover,
+                        return GestureDetector(
+                          onTap: () => _openFullScreenImage(images[index]),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                )
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.network(
+                                images[index],
+                                width: 160,
+                                height: 220,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         );
@@ -160,6 +172,39 @@ class _ResultFulldetailsState extends State<ResultFulldetails> {
                   ),
                 ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FullScreenImageView extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImageView({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.network(imageUrl),
+              ),
+            ),
+            const Positioned(
+              top: 40,
+              left: 20,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: BackButton(color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),

@@ -635,10 +635,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   }
 
                   final students = snapshot.data!.docs.where((doc) {
-                    return doc['Class Name'] == selectedClass!['className'] &&
-                        doc['Medium'] == selectedMedium;
+                    return doc['class_id'] == selectedClass!['id'];
                   }).toList();
-
 
                   if (students.isEmpty) {
                     return const Center(child: Text('No students in this class'));

@@ -180,17 +180,6 @@ class _HomeworkdetailState extends State<Homeworkdetail> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Colors.red, Colors.redAccent]),
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              bottomLeft: Radius.circular(12),
-                            ),
-                          ),
-                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Padding(

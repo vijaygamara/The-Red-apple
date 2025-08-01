@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_red_apple/Teacher_Login_Screen/teacherlogin.dart';
 import 'package:the_red_apple/utils/AppColors.dart';
 
+import '../student_dashborad_screen/student_login.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -16,7 +18,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(const Duration(seconds: 1), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const TeacherLogin()),
+        MaterialPageRoute(builder: (context) => const StudentLogin()),
       );
     });
   }
