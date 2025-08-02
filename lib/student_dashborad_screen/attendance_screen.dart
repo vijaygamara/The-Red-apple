@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-
 
 class AttendanceScreen extends StatefulWidget {
   final Map<String, dynamic> studentData;
@@ -14,89 +14,186 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  Map<DateTime, bool> attendanceMap = {};
   CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
+  Map<String, String> attendanceData = {};
 
   @override
   void initState() {
     super.initState();
-    fetchStudentAttendance();
+    fetchAttendance();
   }
 
-  Future<void> fetchStudentAttendance() async {
-    final classId = widget.studentData['class_id'];
-    final studentId = widget.studentData['id'];
+  Future<void> fetchAttendance() async {
+    try {
+      String mobile = widget.studentData['Mobile Number'];
+      QuerySnapshot studentSnapshot = await FirebaseFirestore.instance
+          .collection('students')
+          .where('mobile_number', isEqualTo: mobile)
+          .get();
 
-    final datesSnapshot = await FirebaseFirestore.instance
-        .collection('attendance_records')
-        .doc(classId)
-        .collection('dates')
-        .get();
+      if (studentSnapshot.docs.isEmpty) return;
 
-    Map<DateTime, bool> tempMap = {};
+      final studentDoc = studentSnapshot.docs.first;
+      final studentId = studentDoc.id;
+      final classId = studentDoc['class_id'];
 
-    for (var doc in datesSnapshot.docs) {
-      final data = doc.data();
-      final dateStr = doc.id;
+      final attendanceCollection = await FirebaseFirestore.instance
+          .collection('attendance_records')
+          .doc(classId)
+          .collection('dates')
+          .get();
 
-      if (data.containsKey('students')) {
-        final studentMap = data['students'] as Map<String, dynamic>;
-        if (studentMap.containsKey(studentId)) {
-          DateTime date = DateTime.tryParse(dateStr) ?? DateTime.now();
-          tempMap[date] = studentMap[studentId] == true;
+      Map<String, String> loadedData = {};
+      for (var doc in attendanceCollection.docs) {
+        final data = doc.data();
+        if (data.containsKey('students') && data['students'][studentId] != null) {
+          final bool present = data['students'][studentId] == true;
+          loadedData[doc.id] = present ? 'Present' : 'Absent';
         }
       }
+
+      setState(() => attendanceData = loadedData);
+    } catch (e) {
+      debugPrint('Attendance fetch error: $e');
     }
-
-    setState(() {
-      attendanceMap = tempMap;
-    });
-  }
-
-  Widget buildMarker(DateTime day) {
-    if (!attendanceMap.containsKey(day)) return const SizedBox();
-
-    final isPresent = attendanceMap[day]!;
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isPresent ? Colors.green : Colors.red,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F6FB),
       appBar: AppBar(
-        title: const Text('My Attendance Calendar'),
-        backgroundColor: Colors.red,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: TableCalendar(
-          firstDay: DateTime.utc(2025, 1, 1),
-          lastDay: DateTime.utc(2025, 12, 31),
-          focusedDay: DateTime.now(),
-          calendarFormat: _calendarFormat,
-          onFormatChanged: (format) {
-            setState(() {
-              _calendarFormat = format;
-            });
-          },
-          calendarBuilders: CalendarBuilders(
-            markerBuilder: (context, day, events) {
-              return buildMarker(day);
-            },
-          ),
-          calendarStyle: const CalendarStyle(
-            todayDecoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-            selectedDecoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Monthly Attendance',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.white,
           ),
         ),
       ),
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            buildBox('🧒 Name', widget.studentData['Student Name']),
+            const SizedBox(height: 10),
+            TableCalendar(
+              firstDay: DateTime.utc(2023, 1, 1),
+              lastDay: DateTime.utc(2030, 12, 31),
+              focusedDay: _focusedDay,
+              calendarFormat: _calendarFormat,
+              onFormatChanged: (format) =>
+                  setState(() => _calendarFormat = format),
+              onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+              calendarBuilders: CalendarBuilders(
+                defaultBuilder: (context, day, focusedDay) {
+                  final dateKey = formatDate(day);
+                  final status = attendanceData[dateKey];
+
+                  if (status == null) return null;
+
+                  return Container(
+                    margin: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: getColorForStatus(status),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${day.day}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: const [
+                Legend(color: Colors.green, label: 'Present'),
+                Legend(color: Colors.red, label: 'Absent'),
+                Legend(color: Colors.grey, label: 'No Data'),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  String formatDate(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  Color getColorForStatus(String? status) {
+    switch (status) {
+      case 'Present':
+        return Colors.green;
+      case 'Absent':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget buildBox(String label, String? value) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFCAF0F8),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(2, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.w600,
+              )),
+          const SizedBox(height: 4),
+          Text(value ?? '-',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class Legend extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const Legend({super.key, required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(radius: 8, backgroundColor: color),
+        const SizedBox(width: 6),
+        Text(label, style: GoogleFonts.poppins(fontSize: 14)),
+      ],
     );
   }
 }

@@ -67,7 +67,7 @@ class TeacherDashborad extends StatelessWidget {
                             width: itemWidth,
                             onTap: (){
                               Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) =>AttendanceView()));
+                                  MaterialPageRoute(builder: (context) => AttendanceView()));
                             }
                           ),
                           _buildCard(

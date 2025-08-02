@@ -17,13 +17,20 @@ class StudentDashboard extends StatefulWidget {
 }
 
 class _StudentDashboardState extends State<StudentDashboard> {
-  /// Controller to handle PageView and also handles initial page
   final _pageController = PageController(initialPage: 0);
-
-  /// Controller to handle bottom nav bar and also handles initial page
   final NotchBottomBarController _controller = NotchBottomBarController(index: 0);
 
   int get maxCount => 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.index = 0;
+
+    _controller.addListener(() {
+      _pageController.jumpToPage(_controller.index);
+    });
+  }
 
   @override
   void dispose() {
@@ -31,16 +38,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
     super.dispose();
   }
 
-  /// Your existing screens
-  List<Widget> get _screens => [
+  late final List<Widget> _screens = [
     AttendanceScreen(studentData: widget.studentData),
     HomeworkScreen(studentData: widget.studentData),
     ResultScreen(studentData: widget.studentData),
-    EventPhotosScreen(),
+    const EventPhotosScreen(),
     ProfileScreen(studentData: widget.studentData),
   ];
 
-  /// Your existing icons
   final List<IconData> _icons = [
     Icons.check_circle_outline,
     Icons.book,
@@ -49,7 +54,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Icons.person,
   ];
 
-  /// Your existing labels
   final List<String> _labels = [
     "Attendance",
     "Homework",
@@ -64,12 +68,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
-        children: List.generate(_screens.length, (index) => _screens[index]),
+        children: _screens,
       ),
       extendBody: true,
       bottomNavigationBar: (_screens.length <= maxCount)
           ? AnimatedNotchBottomBar(
-        /// Provide NotchBottomBarController
         notchBottomBarController: _controller,
         color: Colors.white,
         showLabel: true,
@@ -77,87 +80,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
         maxLine: 1,
         shadowElevation: 5,
         kBottomRadius: 28.0,
-
-        /// Changed to accentBlue for the notch
         notchColor: Colors.blueAccent,
-
-        /// Remove margins for full-width effect
         removeMargins: false,
         bottomBarWidth: 500,
         showShadow: true,
         durationInMilliSeconds: 300,
-
-        /// Custom label style with your Google Fonts
         itemLabelStyle: GoogleFonts.poppins(
           fontSize: 11,
           fontWeight: FontWeight.w400,
         ),
-
         elevation: 10,
-
-        /// Your custom bottom bar items using your existing icons and labels
-        bottomBarItems: [
-          BottomBarItem(
-            inActiveItem: Icon(
-              _icons[0],
-              color: Colors.grey[600],
-            ),
-            activeItem: Icon(
-              _icons[0],
-              color: Colors.white,
-            ),
-            itemLabel: _labels[0],
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              _icons[1],
-              color: Colors.grey[600],
-            ),
-            activeItem: Icon(
-              _icons[1],
-              color: Colors.white,
-            ),
-            itemLabel: _labels[1],
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              _icons[2],
-              color: Colors.grey[600],
-            ),
-            activeItem: Icon(
-              _icons[2],
-              color: Colors.white,
-            ),
-            itemLabel: _labels[2],
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              _icons[3],
-              color: Colors.grey[600],
-            ),
-            activeItem: Icon(
-              _icons[3],
-              color: Colors.white,
-            ),
-            itemLabel: _labels[3],
-          ),
-          BottomBarItem(
-            inActiveItem: Icon(
-              _icons[4],
-              color: Colors.grey[600],
-            ),
-            activeItem: Icon(
-              _icons[4],
-              color: Colors.white,
-            ),
-            itemLabel: _labels[4],
-          ),
-        ],
+        kIconSize: 24.0,
+        bottomBarItems: List.generate(_screens.length, (index) {
+          return BottomBarItem(
+            inActiveItem: Icon(_icons[index], color: Colors.grey[600]),
+            activeItem: Icon(_icons[index], color: Colors.white),
+            itemLabel: _labels[index],
+          );
+        }),
         onTap: (index) {
-          /// Handle page navigation
           _pageController.jumpToPage(index);
         },
-        kIconSize: 24.0,
       )
           : null,
     );
