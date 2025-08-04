@@ -33,12 +33,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   /// Your existing screens
   List<Widget> get _screens => [
-    AttendanceScreen(studentData: widget.studentData),
+    AttendanceScreen(),
     HomeworkScreen(studentData: widget.studentData),
     ResultScreen(studentData: widget.studentData),
     EventPhotosScreen(),
     ProfileScreen(studentData: widget.studentData),
   ];
+
 
   /// Your existing icons
   final List<IconData> _icons = [
@@ -76,7 +77,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         textOverflow: TextOverflow.visible,
         maxLine: 1,
         shadowElevation: 5,
-        kBottomRadius: 28.0,
+        kBottomRadius: 2.0,
 
         /// Changed to accentBlue for the notch
         notchColor: Colors.blueAccent,

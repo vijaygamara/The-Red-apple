@@ -164,26 +164,39 @@ class _HomeworkFullDetail2State extends State<HomeworkFullDetail2> {
                   ),
                   itemBuilder: (context, index) {
                     final imageUrl = images[index].toString();
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: CircularProgressIndicator(color: Colors.redAccent),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade300,
-                            child: const Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                          );
-                        },
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullscreenImage(imageUrl: imageUrl),
+                          ),
+                        );
+                      },
+                      child: Hero(
+                        tag: imageUrl, // unique tag for Hero animation
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(color: Colors.redAccent),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -195,8 +208,6 @@ class _HomeworkFullDetail2State extends State<HomeworkFullDetail2> {
     );
   }
 }
-
-
 
 class FullscreenImage extends StatelessWidget {
   final String imageUrl;

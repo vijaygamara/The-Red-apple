@@ -126,38 +126,42 @@ class _ResultScreenState extends State<ResultScreen> {
                               scrollDirection: Axis.horizontal,
                               itemCount: imageList.length,
                               separatorBuilder: (_, __) => const SizedBox(width: 12),
-                              itemBuilder: (context, i) => ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
-                                  imageList[i],
-                                  width: 140,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return Container(
-                                      width: 140,
-                                      height: 160,
-                                      color: Colors.grey.shade200,
-                                      child: const Center(
-                                        child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 140,
-                                      height: 160,
-                                      color: Colors.grey.shade300,
-                                      child: const Icon(
-                                        Icons.broken_image,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
+                              itemBuilder: (context, i) {
+                                final imageUrl = imageList[i];
+                                // **No GestureDetector or Hero here, so no fullscreen open**
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.network(
+                                    imageUrl,
+                                    width: 140,
+                                    height: 160,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return Container(
+                                        width: 140,
+                                        height: 160,
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                          child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 140,
+                                        height: 160,
+                                        color: Colors.grey.shade300,
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 50,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ]
@@ -173,7 +177,6 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 }
-
 
 class ResultDetailScreen extends StatelessWidget {
   final Map<String, dynamic> resultData;
@@ -318,7 +321,7 @@ class ResultDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Images horizontal list
+            // Images horizontal list with fullscreen on tap
             if (imageList.isEmpty)
               const Text(
                 "No images available.",
@@ -332,36 +335,53 @@ class ResultDetailScreen extends StatelessWidget {
                   itemCount: imageList.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.network(
-                        imageList[index],
-                        width: 140,
-                        height: 140,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
+                    final imageUrl = imageList[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullScreenImageViewer(
+                              imageUrl: imageUrl,
+                              tag: imageUrl,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Hero(
+                        tag: imageUrl,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            imageUrl,
                             width: 140,
                             height: 140,
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: CircularProgressIndicator(color: Colors.redAccent),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 140,
-                            height: 140,
-                            color: Colors.grey.shade300,
-                            child: const Icon(
-                              Icons.broken_image,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                width: 140,
+                                height: 140,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(color: Colors.redAccent),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 140,
+                                height: 140,
+                                color: Colors.grey.shade300,
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  size: 40,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -373,9 +393,6 @@ class ResultDetailScreen extends StatelessWidget {
     );
   }
 }
-
-
-
 
 class FullScreenImageViewer extends StatelessWidget {
   final String imageUrl;
