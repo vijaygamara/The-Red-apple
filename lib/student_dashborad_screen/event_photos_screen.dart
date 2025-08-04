@@ -1,21 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class EventPhotosScreen extends StatefulWidget {
+class EventPhotosScreen extends StatelessWidget {
   const EventPhotosScreen({super.key});
 
   @override
-  State<EventPhotosScreen> createState() => _EventPhotosScreenState();
-}
-
-class _EventPhotosScreenState extends State<EventPhotosScreen> {
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F6FB),
       appBar: AppBar(
-        title: const Text('Event Gallery'),
-        backgroundColor: Colors.red,
+        elevation: 0,
         centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Event Gallery',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -24,10 +29,18 @@ class _EventPhotosScreenState extends State<EventPhotosScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.red));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.blueAccent),
+            );
           }
+
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No events found'));
+            return const Center(
+              child: Text(
+                'No event photos available.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            );
           }
 
           final events = snapshot.data!.docs;
@@ -36,61 +49,86 @@ class _EventPhotosScreenState extends State<EventPhotosScreen> {
             padding: const EdgeInsets.all(16),
             itemCount: events.length,
             itemBuilder: (context, index) {
-              final data = events[index].data() as Map<String, dynamic>;
+              final doc = events[index];
+              final data = doc.data() as Map<String, dynamic>;
               final images = List<String>.from(data['images'] ?? []);
               final description = data['description'] ?? '';
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+                  border:
+                  Border.all(color: Colors.blueAccent.withOpacity(0.4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.1),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      description,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    images.isEmpty
-                        ? const Text("No images", style: TextStyle(color: Colors.grey))
-                        : SizedBox(
-                      height: 140,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: images.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (context, imgIndex) {
-                          final imgUrl = images[imgIndex];
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => FullScreenImageViewer(imageUrl: imgUrl),
-                                ),
-                              );
-                            },
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                imgUrl,
-                                width: 160,
-                                height: 140,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        },
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      images.isEmpty
+                          ? const Text(
+                        "No images available",
+                        style: TextStyle(color: Colors.grey),
+                      )
+                          : SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: images.length,
+                          separatorBuilder: (_, __) =>
+                          const SizedBox(width: 10),
+                          itemBuilder: (context, imgIndex) {
+                            final imageUrl = images[imgIndex];
+                            final tag = 'img-$index-$imgIndex';
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => FullScreenImageViewer(
+                                      imageUrl: imageUrl,
+                                      tag: tag,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Hero(
+                                tag: tag,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    imageUrl,
+                                    width: 160,
+                                    height: 140,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -103,8 +141,13 @@ class _EventPhotosScreenState extends State<EventPhotosScreen> {
 
 class FullScreenImageViewer extends StatelessWidget {
   final String imageUrl;
+  final String tag;
 
-  const FullScreenImageViewer({super.key, required this.imageUrl});
+  const FullScreenImageViewer({
+    super.key,
+    required this.imageUrl,
+    required this.tag,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +158,11 @@ class FullScreenImageViewer extends StatelessWidget {
         child: Stack(
           children: [
             Center(
-              child: InteractiveViewer(
-                child: Image.network(imageUrl),
+              child: Hero(
+                tag: tag,
+                child: InteractiveViewer(
+                  child: Image.network(imageUrl),
+                ),
               ),
             ),
             const Positioned(

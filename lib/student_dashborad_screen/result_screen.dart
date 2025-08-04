@@ -70,95 +70,345 @@ class _ResultScreenState extends State<ResultScreen> {
               final imageList = List<String>.from(data['Images'] ?? []);
               final note = data['Text'] ?? '-';
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFCAF0F8), Color(0xFFE0FBFC)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ResultDetailScreen(resultData: data),
                     ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Date: $formattedDate',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0077B6),
-                        ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFCAF0F8), Color(0xFFE0FBFC)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blueAccent.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
-                      const SizedBox(height: 10),
-                      if (note.isNotEmpty)
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Note: $note',
+                          'Date: $formattedDate',
                           style: const TextStyle(
-                            fontSize: 16.5,
-                            color: Colors.black87,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0077B6),
                           ),
                         ),
-                      if (imageList.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 160,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: imageList.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
-                            itemBuilder: (context, i) => ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.network(
-                                imageList[i],
-                                width: 140,
-                                height: 160,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, progress) {
-                                  if (progress == null) return child;
-                                  return Container(
-                                    width: 140,
-                                    height: 160,
-                                    color: Colors.grey.shade200,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 140,
-                                    height: 160,
-                                    color: Colors.grey.shade300,
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
-                                  );
-                                },
+                        const SizedBox(height: 10),
+                        if (note.isNotEmpty)
+                          Text(
+                            'Note: $note',
+                            style: const TextStyle(
+                              fontSize: 16.5,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        if (imageList.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 160,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: imageList.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              itemBuilder: (context, i) => ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  imageList[i],
+                                  width: 140,
+                                  height: 160,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
+                                      width: 140,
+                                      height: 160,
+                                      color: Colors.grey.shade200,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(color: Color(0xFF00B4D8)),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 140,
+                                      height: 160,
+                                      color: Colors.grey.shade300,
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        size: 50,
+                                        color: Colors.grey,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ]
-                    ],
+                        ]
+                      ],
+                    ),
                   ),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+
+class ResultDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> resultData;
+
+  const ResultDetailScreen({super.key, required this.resultData});
+
+  @override
+  Widget build(BuildContext context) {
+    final note = resultData['Text'] ?? '';
+    final timestamp = resultData['Timestamp'];
+    final imageList = List<String>.from(resultData['Images'] ?? []);
+    final formattedDate = timestamp != null
+        ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
+        : 'Unknown';
+
+    final medium = resultData['Medium'] ?? 'Medium';
+    final className = resultData['Class'] ?? 'Class';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F6FB),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Result Details',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Medium + Class + Date Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Medium and Class Column
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.school, color: Colors.blue, size: 22),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$medium Medium',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.class_, color: Colors.grey, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          className,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // Date Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    formattedDate,
+                    style: TextStyle(
+                      color: Colors.red.shade800,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Result Note Section Title
+            Row(
+              children: const [
+                Text('📝', style: TextStyle(fontSize: 22)),
+                SizedBox(width: 6),
+                Text(
+                  "Result Note:",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Result Note Container (pink background)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                note.isNotEmpty ? note : '-',
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Result Images Section Title
+            Row(
+              children: const [
+                Text('🖼', style: TextStyle(fontSize: 22)),
+                SizedBox(width: 6),
+                Text(
+                  "Result Images:",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Images horizontal list
+            if (imageList.isEmpty)
+              const Text(
+                "No images available.",
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              SizedBox(
+                height: 140,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: imageList.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        imageList[index],
+                        width: 140,
+                        height: 140,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            width: 140,
+                            height: 140,
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: CircularProgressIndicator(color: Colors.redAccent),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 140,
+                            height: 140,
+                            color: Colors.grey.shade300,
+                            child: const Icon(
+                              Icons.broken_image,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+class FullScreenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  final String tag;
+
+  const FullScreenImageViewer({super.key, required this.imageUrl, required this.tag});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Stack(
+          children: [
+            Center(
+              child: Hero(
+                tag: tag,
+                child: InteractiveViewer(
+                  child: Image.network(imageUrl),
+                ),
+              ),
+            ),
+            const Positioned(
+              top: 40,
+              left: 20,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: BackButton(color: Colors.white),
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

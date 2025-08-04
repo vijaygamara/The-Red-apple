@@ -72,14 +72,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
       onWillPop: () async {
         final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom != 0;
         if (isKeyboardOpen) {
-          FocusScope.of(context).unfocus(); // pehle keyboard band karo
+          FocusScope.of(context).unfocus();
           return false;
         }
         return true;
       },
       child: GestureDetector(
         onTap: () {
-          FocusScope.of(context).unfocus(); // tap se bhi keyboard band ho
+          FocusScope.of(context).unfocus();
         },
         child: Scaffold(
           appBar: AppBar(
@@ -91,6 +91,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: TextField(
                   controller: searchController,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: 'Search by Student Name....',
                     prefixIcon: const Icon(Icons.search),
@@ -119,11 +120,23 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 return const Center(child: Text("No student details", style: TextStyle(color: Colors.grey)));
               }
 
+              final students = snap.data!.docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final name = (data['Student Name'] ?? '').toString().toLowerCase();
+                return name.contains(searchController.text.toLowerCase());
+              }).toList();
+
+              if (students.isEmpty) {
+                return const Center(
+                  child: Text("No matching students found", style: TextStyle(color: Colors.grey)),
+                );
+              }
+
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
-                itemCount: snap.data!.docs.length,
+                itemCount: students.length,
                 itemBuilder: (_, i) {
-                  final doc = snap.data!.docs[i];
+                  final doc = students[i];
                   final data = doc.data() as Map<String, dynamic>;
                   final id = doc.id;
                   final name = data['Student Name'] ?? 'S';
@@ -172,7 +185,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     },
                     child: InkWell(
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=> Studentview(studentData:data)));
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => Studentview(studentData: data)));
                       },
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 8),

@@ -480,14 +480,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
 
     try {
-      final batch = FirebaseFirestore.instance.batch();
       final attendanceRef = FirebaseFirestore.instance
           .collection('attendance_records')
           .doc(selectedClass!['id'])
           .collection('dates')
           .doc(dateStr);
 
-      // Prepare the attendance data
       Map<String, dynamic> attendanceData = {
         'class_id': selectedClass!['id'],
         'class_name': selectedClass!['className'],
@@ -497,35 +495,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         'students': {},
       };
 
-      // Add each student's attendance status
       attendanceMap.forEach((studentId, present) {
         attendanceData['students'][studentId] = present;
       });
 
-      // Save the entire day's attendance as a single document
       await attendanceRef.set(attendanceData);
-
-      // Also update each student's document with the attendance record
-      await Future.wait(attendanceMap.entries.map((entry) async {
-        final studentId = entry.key;
-        final present = entry.value;
-        await FirebaseFirestore.instance
-            .collection('students')
-            .doc(studentId)
-            .collection('attendance')
-            .doc(dateStr)
-            .set({
-          'present': present,
-          'date': dateStr,
-          'class_id': selectedClass!['id'],
-        });
-      }));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Attendance saved successfully!')),
       );
 
-      // Navigate back after saving
       if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -576,7 +555,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 15),
 
             // Class Dropdown
@@ -608,7 +586,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ],
             ),
+
             const SizedBox(height: 15),
+
+            // Date picker
             TextFormField(
               controller: dateController,
               readOnly: true,
@@ -620,6 +601,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               onTap: () => _selectDate(context),
             ),
             const SizedBox(height: 15),
+
+            // Student List with Attendance Marking
             Expanded(
               child: selectedClass == null
                   ? const Center(child: Text('Select class to load students'))
@@ -635,14 +618,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   }
 
                   final students = snapshot.data!.docs.where((doc) {
-                    return doc['class_id'] == selectedClass!['id'];
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['Class Name'] == selectedClass!['className'] &&
+                        data['Medium'] == selectedMedium;
                   }).toList();
+
 
                   if (students.isEmpty) {
                     return const Center(child: Text('No students in this class'));
                   }
 
-                  // Initialize attendance map with all students (default to false if not already set)
                   for (var student in students) {
                     attendanceMap.putIfAbsent(student.id, () => false);
                   }
@@ -651,6 +636,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     itemCount: students.length,
                     itemBuilder: (context, index) {
                       final student = students[index];
+                      final data = student.data() as Map<String, dynamic>;
                       final studentId = student.id;
                       final isPresent = attendanceMap[studentId] ?? false;
 
@@ -663,17 +649,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               CircleAvatar(
                                 backgroundColor: isPresent ? Colors.green : Colors.red,
                                 child: Text(
-                                  student['Student Name'][0],
+                                  (data['Student Name'] ?? 'S')[0],
                                   style: const TextStyle(color: Colors.white),
                                 ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(student['Student Name']),
+                                child: Text(data['Student Name'] ?? 'No Name'),
                               ),
                               Row(
                                 children: [
-                                  // Present Checkbox
                                   Row(
                                     children: [
                                       Checkbox(
@@ -689,7 +674,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                     ],
                                   ),
                                   const SizedBox(width: 10),
-                                  // Absent Checkbox
                                   Row(
                                     children: [
                                       Checkbox(
@@ -715,6 +699,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 },
               ),
             ),
+
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeworkFullDetail2 extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -13,183 +14,189 @@ class _HomeworkFullDetail2State extends State<HomeworkFullDetail2> {
   @override
   Widget build(BuildContext context) {
     final date = DateTime.tryParse(widget.data['date'] ?? '') ?? DateTime.now();
-    final images = widget.data['images'] as List<dynamic>? ?? [];
+    final formattedDate =
+        "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
 
-    String formattedDate = "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
+    final images = widget.data['images'] as List<dynamic>? ?? [];
+    final note = widget.data['text'] ?? '-';
+    final medium = widget.data['medium'] ?? 'Medium';
+    final className = widget.data['class'] ?? 'Class';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FB),
       appBar: AppBar(
-        title: const Text('Homework Detail'),
-        backgroundColor: const Color(0xFF00B4D8),
-        centerTitle: true,
         elevation: 0,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Homework Details',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 18, left: 18, right: 18, bottom: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date Container (with padding)
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.shade100.withOpacity(0.5),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-              child: Row(
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Medium + Class + Date Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.calendar_today, color: Color(0xFF0077B6)),
-                  const SizedBox(width: 12),
-                  Text(
-                    "Date: $formattedDate",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: Color(0xFF0077B6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Homework Text — full screen width without horizontal padding
-            if (widget.data['text'] != null && widget.data['text'].toString().isNotEmpty)
-              Container(
-                width: double.infinity,  // Full width
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade300.withOpacity(0.6),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Homework",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.data['text'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (images.isNotEmpty) ...[
-              const SizedBox(height: 28),
-
-              // Images Section Title (with some left padding)
-              const Padding(
-                padding: EdgeInsets.only(left: 8, bottom: 12),
-                child: Text(
-                  "Images",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-
-              // Images Grid with padding
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: images.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1,
-                ),
-                itemBuilder: (context, index) {
-                  final imageUrl = images[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FullscreenImage(imageUrl: imageUrl),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
+                  // Medium and Class
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.school, color: Colors.blue, size: 22),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$medium Medium',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
                           ),
                         ],
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Hero(
-                        tag: imageUrl,
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              color: Colors.grey.shade200,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF00B4D8),
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey.shade300,
-                              child: const Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.class_, color: Colors.grey, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            className,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Date Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      formattedDate,
+                      style: TextStyle(
+                        color: Colors.red.shade800,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
+
+              const SizedBox(height: 20),
+
+              // Homework Text Section Title
+              Row(
+                children: const [
+                  Text('📘', style: TextStyle(fontSize: 22)),
+                  SizedBox(width: 6),
+                  Text(
+                    "Homework Text:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // Homework Text Container
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  note.toString().isNotEmpty ? note : '-',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Homework Images Section Title
+              Row(
+                children: const [
+                  Text('🖼', style: TextStyle(fontSize: 22)),
+                  SizedBox(width: 6),
+                  Text(
+                    "Homework Images:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              if (images.isEmpty)
+                const Text("No images available.", style: TextStyle(color: Colors.grey))
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: images.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final imageUrl = images[index].toString();
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: CircularProgressIndicator(color: Colors.redAccent),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+
 
 class FullscreenImage extends StatelessWidget {
   final String imageUrl;
