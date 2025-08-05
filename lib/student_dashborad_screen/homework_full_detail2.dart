@@ -56,7 +56,7 @@ class _HomeworkFullDetail2State extends State<HomeworkFullDetail2> {
                           const Icon(Icons.school, color: Colors.blue, size: 22),
                           const SizedBox(width: 6),
                           Text(
-                            '$medium Medium',
+                            '$medium',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 20,

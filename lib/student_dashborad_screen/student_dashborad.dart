@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
-import 'package:the_red_apple/student_dashborad_screen/attendance_screen.dart';
+import 'package:the_red_apple/student_dashborad_screen/student_attendance_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/homework_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/result_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/event_photos_screen.dart';
@@ -31,15 +31,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
     super.dispose();
   }
 
-  /// Your existing screens
   List<Widget> get _screens => [
-    AttendanceScreen(),
+    StudentAttendanceScreen(
+      studentId: '', // We'll get this from the document ID
+      studentName: widget.studentData['Student Name'] ?? '',
+      className: widget.studentData['Class Name'] ?? '',
+      medium: widget.studentData['Medium'] ?? '',
+      mobileNumber: widget.studentData['Mobile Number'] ?? '',
+    ),
     HomeworkScreen(studentData: widget.studentData),
     ResultScreen(studentData: widget.studentData),
     EventPhotosScreen(),
     ProfileScreen(studentData: widget.studentData),
   ];
-
 
   /// Your existing icons
   final List<IconData> _icons = [
@@ -77,7 +81,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         textOverflow: TextOverflow.visible,
         maxLine: 1,
         shadowElevation: 5,
-        kBottomRadius: 2.0,
+        kBottomRadius: 28.0,
 
         /// Changed to accentBlue for the notch
         notchColor: Colors.blueAccent,
