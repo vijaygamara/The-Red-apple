@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 class EventDetail extends StatefulWidget {
   const EventDetail({super.key});
@@ -15,6 +16,8 @@ class _EventDetailState extends State<EventDetail> {
   final TextEditingController _descController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   List<XFile> _images = [];
+  XFile? _selectedVideo;
+  VideoPlayerController? _videoController;
   bool _isUploading = false;
 
   Future<void> _pickImages() async {
@@ -28,6 +31,24 @@ class _EventDetailState extends State<EventDetail> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error picking images: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    try {
+      final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
+      if (video != null) {
+        _videoController?.dispose();
+        _videoController = VideoPlayerController.file(File(video.path));
+        await _videoController!.initialize();
+        setState(() {
+          _selectedVideo = video;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking video: $e')),
       );
     }
   }
@@ -52,12 +73,27 @@ class _EventDetailState extends State<EventDetail> {
     }
   }
 
+  Future<String?> _uploadVideo(String docId) async {
+    if (_selectedVideo == null) return null;
+    try {
+      final file = File(_selectedVideo!.path);
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('event_videos/$docId/video.mp4');
+      await ref.putFile(file);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      debugPrint("Video upload error: $e");
+      return null;
+    }
+  }
+
   Future<void> _saveEvent() async {
     final desc = _descController.text.trim();
 
-    if (desc.isEmpty || _images.isEmpty) {
+    if (desc.isEmpty || (_images.isEmpty && _selectedVideo == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter description and select images')),
+        const SnackBar(content: Text('Please enter description and select image or video')),
       );
       return;
     }
@@ -71,11 +107,16 @@ class _EventDetailState extends State<EventDetail> {
         'description': desc,
         'createdAt': FieldValue.serverTimestamp(),
         'images': [],
+        'video': '',
       });
 
       final urls = await _uploadImages(docRef.id);
+      final videoUrl = await _uploadVideo(docRef.id);
 
-      await docRef.update({'images': urls});
+      await docRef.update({
+        'images': urls,
+        'video': videoUrl ?? '',
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Event saved successfully'), backgroundColor: Colors.green),
@@ -84,6 +125,9 @@ class _EventDetailState extends State<EventDetail> {
       setState(() {
         _descController.clear();
         _images = [];
+        _selectedVideo = null;
+        _videoController?.dispose();
+        _videoController = null;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,6 +138,13 @@ class _EventDetailState extends State<EventDetail> {
         _isUploading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    _videoController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -119,33 +170,68 @@ class _EventDetailState extends State<EventDetail> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: ElevatedButton.icon(
-              onPressed: _pickImages,
-              icon: const Icon(Icons.add_photo_alternate),
-              label: const Text("Select Images"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _pickImages,
+                    icon: const Icon(Icons.image),
+                    label: const Text("Select Images"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _pickVideo,
+                    icon: const Icon(Icons.video_library),
+                    label: const Text("Select Video"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: _images.isEmpty
-                ? const Center(child: Text('No images selected'))
-                : GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: _images.length,
-              itemBuilder: (context, index) => Image.file(
-                File(_images[index].path),
-                fit: BoxFit.cover,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _images.isEmpty
+                      ? const Text('No images selected')
+                      : GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: _images.length,
+                    itemBuilder: (context, index) => Image.file(
+                      File(_images[index].path),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _selectedVideo != null && _videoController != null && _videoController!.value.isInitialized
+                      ? AspectRatio(
+                    aspectRatio: _videoController!.value.aspectRatio,
+                    child: VideoPlayer(_videoController!),
+                  )
+                      : const Text('No video selected'),
+                ],
               ),
             ),
           ),

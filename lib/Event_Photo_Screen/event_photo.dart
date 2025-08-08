@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'package:the_red_apple/Event_Dateil_Screen/event_detail.dart';
 
 class EventPhoto extends StatefulWidget {
@@ -27,7 +28,8 @@ class _EventPhotoState extends State<EventPhoto> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.red));
+            return const Center(
+                child: CircularProgressIndicator(color: Colors.red));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No events found'));
@@ -44,6 +46,7 @@ class _EventPhotoState extends State<EventPhoto> {
               final event = doc.data() as Map<String, dynamic>;
               final images = List<String>.from(event['images'] ?? []);
               final description = event['description'] ?? '';
+              final videoUrl = event['video'] ?? '';
 
               return Dismissible(
                 key: Key(docId),
@@ -53,7 +56,8 @@ class _EventPhotoState extends State<EventPhoto> {
                     context: context,
                     builder: (_) => AlertDialog(
                       title: const Text("Delete Event"),
-                      content: const Text("Are you sure you want to delete this event?"),
+                      content:
+                      const Text("Are you sure you want to delete this event?"),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(false),
@@ -61,14 +65,18 @@ class _EventPhotoState extends State<EventPhoto> {
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                          child:
+                          const Text("Delete", style: TextStyle(color: Colors.red)),
                         ),
                       ],
                     ),
                   );
                 },
                 onDismissed: (_) async {
-                  await FirebaseFirestore.instance.collection('events').doc(docId).delete();
+                  await FirebaseFirestore.instance
+                      .collection('events')
+                      .doc(docId)
+                      .delete();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Event deleted")),
                   );
@@ -155,6 +163,40 @@ class _EventPhotoState extends State<EventPhoto> {
                             },
                           ),
                         ),
+                        if (videoUrl.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          const Text(
+                            "Video Preview",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FullScreenVideoPlayer(videoUrl: videoUrl),
+                                ),
+                              );
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    color: Colors.black12,
+                                  ),
+                                  child: const Icon(Icons.videocam, size: 60, color: Colors.grey),
+                                ),
+                                const Icon(Icons.play_circle_fill,
+                                    size: 64, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -212,6 +254,62 @@ class FullScreenImageViewer extends StatelessWidget {
             )
           ],
         ),
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPlayer extends StatefulWidget {
+  final String videoUrl;
+
+  const FullScreenVideoPlayer({super.key, required this.videoUrl});
+
+  @override
+  State<FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.videoUrl)
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: _controller.value.isInitialized
+                ? AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            )
+                : const CircularProgressIndicator(),
+          ),
+          const Positioned(
+            top: 40,
+            left: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.black54,
+              child: BackButton(color: Colors.white),
+            ),
+          )
+        ],
       ),
     );
   }
