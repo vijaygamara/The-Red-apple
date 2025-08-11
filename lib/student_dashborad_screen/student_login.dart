@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_red_apple/student_dashborad_screen/student_dashborad.dart';
 
 class StudentLogin extends StatefulWidget {
@@ -43,9 +44,9 @@ class _StudentLoginState extends State<StudentLogin> {
           .limit(1)
           .get();
 
-
       if (query.docs.isNotEmpty) {
         final studentData = query.docs.first.data();
+        saveLogin(phone, studentData);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -63,7 +64,15 @@ class _StudentLoginState extends State<StudentLogin> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void saveLogin(String phone, Map<String, dynamic> studentData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('phone', phone);
+    debugPrint("✅ Saved phone: $phone");
+    debugPrint("✅ Student Data: $studentData");
   }
 
   @override
@@ -83,12 +92,15 @@ class _StudentLoginState extends State<StudentLogin> {
           body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1565C0), Color(0xFF42A5F5), Color(0xFF90CAF9)],
+                colors: [
+                  Color(0xFF1565C0),
+                  Color(0xFF42A5F5),
+                  Color(0xFF90CAF9)
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-
             child: Center(
               child: SingleChildScrollView(
                 child: Container(
@@ -164,14 +176,15 @@ class _StudentLoginState extends State<StudentLogin> {
                             elevation: 8,
                           ),
                           child: _isLoading
-                              ? const CircularProgressIndicator(color: Colors.blueAccent)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.blueAccent)
                               : const Text(
-                            "Login",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

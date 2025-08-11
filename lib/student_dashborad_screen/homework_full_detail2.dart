@@ -59,7 +59,7 @@ class _HomeworkFullDetail2State extends State<HomeworkFullDetail2> {
                             '$medium',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                              fontSize: 18,
                             ),
                           ),
                         ],
