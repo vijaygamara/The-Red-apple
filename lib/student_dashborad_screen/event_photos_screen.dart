@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 
 class EventPhotosScreen extends StatelessWidget {
   const EventPhotosScreen({super.key});
@@ -53,14 +54,14 @@ class EventPhotosScreen extends StatelessWidget {
               final data = doc.data() as Map<String, dynamic>;
               final images = List<String>.from(data['images'] ?? []);
               final description = data['description'] ?? '';
+              final videoUrl = data['video'] ?? '';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border:
-                  Border.all(color: Colors.blueAccent.withOpacity(0.4)),
+                  border: Border.all(color: Colors.blueAccent.withOpacity(0.4)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.blueAccent.withOpacity(0.1),
@@ -83,6 +84,8 @@ class EventPhotosScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Images Section
                       images.isEmpty
                           ? const Text(
                         "No images available",
@@ -127,6 +130,46 @@ class EventPhotosScreen extends StatelessWidget {
                           },
                         ),
                       ),
+
+                      // Video Section
+                      if (videoUrl.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        const Text(
+                          "Video Preview",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87),
+                        ),
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    FullScreenVideoPlayer(videoUrl: videoUrl),
+                              ),
+                            );
+                          },
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  color: Colors.black12,
+                                ),
+                                child: const Icon(Icons.videocam,
+                                    size: 60, color: Colors.grey),
+                              ),
+                              const Icon(Icons.play_circle_fill,
+                                  size: 64, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -175,6 +218,62 @@ class FullScreenImageViewer extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPlayer extends StatefulWidget {
+  final String videoUrl;
+
+  const FullScreenVideoPlayer({super.key, required this.videoUrl});
+
+  @override
+  State<FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.network(widget.videoUrl)
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: _controller.value.isInitialized
+                ? AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            )
+                : const CircularProgressIndicator(),
+          ),
+          const Positioned(
+            top: 40,
+            left: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.black54,
+              child: BackButton(color: Colors.white),
+            ),
+          )
+        ],
       ),
     );
   }

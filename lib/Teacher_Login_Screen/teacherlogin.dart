@@ -66,14 +66,6 @@ class _TeacherLoginState extends State<TeacherLogin> {
     );
   }
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    passwordController.text = "109996";
-    phoneController.text = "9428109996";
-
-  }
 
 
   @override
