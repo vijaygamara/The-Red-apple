@@ -41,8 +41,17 @@ class _ClassisScreenState extends State<ClassisScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Class Time Table", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.red,
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Class Time Table',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: classesRef.orderBy('time').snapshots(),

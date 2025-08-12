@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:the_red_apple/Home_Work_Screen/homework.dart';
 import 'package:the_red_apple/HomeworkFull_Detail_Screen/HomeworkFullDetail.dart';
 import '../utils/image_utils.dart';
@@ -98,10 +99,19 @@ class _HomeworkdetailState extends State<Homeworkdetail> {
   Widget build(BuildContext context) {
     final redTheme = Colors.red.shade400;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Homework Detail', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.red,
-      ),
+        appBar: AppBar(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: const Color(0xFF00B4D8),
+          title: Text(
+            'HomeWork Detail',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
+        ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('homework').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {

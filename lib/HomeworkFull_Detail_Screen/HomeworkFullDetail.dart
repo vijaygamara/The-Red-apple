@@ -29,11 +29,17 @@ class _HomeworkFullDetailState extends State<HomeworkFullDetail> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Homework Details"),
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
-        elevation: 4,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'HomeWork details',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

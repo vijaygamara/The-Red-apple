@@ -29,13 +29,19 @@ class _ResultFulldetailsState extends State<ResultFulldetails> {
     date != null ? DateFormat('dd MMM yyyy').format(date) : 'N/A';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Result Detail"),
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        elevation: 4,
-      ),
+        appBar: AppBar(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: const Color(0xFF00B4D8),
+          title: Text(
+            'Result Details',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
+        ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(

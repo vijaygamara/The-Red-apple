@@ -17,11 +17,17 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Uploaded Results",
-          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Uploaded Results',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: Colors.red,
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.red,

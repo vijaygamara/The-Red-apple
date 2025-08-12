@@ -163,13 +163,19 @@ class _ResultScreenState extends State<ResultScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.docId != null ? 'Edit Result' : 'Student Results',
-            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          appBar: AppBar(
+            elevation: 0,
+            centerTitle: true,
+            backgroundColor: const Color(0xFF00B4D8),
+            title: Text(
+              widget.docId != null ? 'Edit Result' : 'Student Results',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                fontSize: 25,
+                color: Colors.white,
+              ),
+            ),
           ),
-          backgroundColor: Colors.red,
-        ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -179,11 +180,19 @@ class _HomeworkState extends State<Homework> {
     final themeColor = Colors.red;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.docId != null ? 'Edit Homework' : 'Upload Homework',
-            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-        backgroundColor: themeColor,
-      ),
+        appBar: AppBar(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: const Color(0xFF00B4D8),
+          title: Text(
+            widget.docId != null ? 'Edit Homework' : 'Upload Homework',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
+        ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

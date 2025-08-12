@@ -83,8 +83,17 @@ class _StudentsScreenState extends State<StudentsScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
-            backgroundColor: Colors.red,
-            title: const Text('Students', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+            elevation: 0,
+            centerTitle: true,
+            backgroundColor: const Color(0xFF00B4D8),
+            title: Text(
+              'Students',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+                fontSize: 25,
+                color: Colors.white,
+              ),
+            ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(56),
               child: Padding(

@@ -74,11 +74,17 @@ class _AttendanceViewState extends State<AttendanceView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Attendance Records",
-          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: const Color(0xFF00B4D8),
+        title: Text(
+          'Attendance Records',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 25,
+            color: Colors.white,
+          ),
         ),
-        backgroundColor: Colors.red,
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.red,
@@ -330,13 +336,19 @@ class _ClassAttendanceDetailsState extends State<ClassAttendanceDetails> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.classData['className'],
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        appBar: AppBar(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: const Color(0xFF00B4D8),
+          title: Text(
+            widget.classData['className'],
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 25,
+              color: Colors.white,
+            ),
+          ),
         ),
-        backgroundColor: Colors.red,
-      ),
       body: Column(
         children: [
           Padding(

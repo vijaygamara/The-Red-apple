@@ -109,11 +109,17 @@ class _ClassisState extends State<Classis> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: const Color(0xFF00B4D8),
           title: Text(
             widget.docId == null ? "Add Class" : "Edit Class",
-            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w700,
+              fontSize: 25,
+              color: Colors.white,
+            ),
           ),
-          backgroundColor: Colors.red,
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
