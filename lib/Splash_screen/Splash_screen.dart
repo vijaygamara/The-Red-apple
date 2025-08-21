@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:overlay_support/overlay_support.dart';
 import 'package:the_red_apple/Teacher_Login_Screen/teacherlogin.dart';
 import 'package:the_red_apple/utils/AppColors.dart';
 
@@ -15,11 +17,28 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _initMessaging();
     Future.delayed(const Duration(seconds: 1), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const TeacherLogin()),
+        MaterialPageRoute(builder: (context) => const StudentLogin()),
       );
+    });
+  }
+
+  void _initMessaging() {
+    // Foreground message handler
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      if (notification != null) {
+        showSimpleNotification(
+          Text(notification.title ?? 'Notification'),
+          subtitle: Text(notification.body ?? ''),
+          background: Colors.blue,
+          autoDismiss: true,
+          slideDismissDirection: DismissDirection.up,
+        );
+      }
     });
   }
 

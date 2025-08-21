@@ -6,6 +6,8 @@ import 'package:the_red_apple/student_dashborad_screen/homework_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/result_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/event_photos_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/profile_screen.dart';
+import 'package:the_red_apple/student_dashborad_screen/notes_screen.dart';
+import 'package:the_red_apple/student_dashborad_screen/notifications_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   final Map<String, dynamic> studentData;
@@ -23,7 +25,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   /// Controller to handle bottom nav bar and also handles initial page
   final NotchBottomBarController _controller = NotchBottomBarController(index: 0);
 
-  int get maxCount => 5;
+  int get maxCount => 7;
 
   @override
   void dispose() {
@@ -42,6 +44,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
     HomeworkScreen(studentData: widget.studentData),
     ResultScreen(studentData: widget.studentData),
     EventPhotosScreen(),
+    // // NotesScreen(
+    // //   studentName: widget.studentData['Student Name'] ?? '',
+    // //   className: widget.studentData['Class Name'] ?? '',
+    // //   medium: widget.studentData['Medium'] ?? '',
+    // ),
+    // NotificationsScreen(
+    //   studentName: widget.studentData['Student Name'] ?? '',
+    //   className: widget.studentData['Class Name'] ?? '',
+    //   medium: widget.studentData['Medium'] ?? '',
+    // ),
     ProfileScreen(studentData: widget.studentData),
   ];
 
@@ -51,6 +63,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Icons.book,
     Icons.grade,
     Icons.photo_library,
+    Icons.note_outlined,
+    Icons.notifications,
     Icons.person,
   ];
 
@@ -60,6 +74,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
     "Homework",
     "Result",
     "Events",
+    "Profile",
+    "Notifications",
     "Profile",
   ];
 

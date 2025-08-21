@@ -5,6 +5,8 @@ import 'package:the_red_apple/Home_work_Detail/homeworkdetail.dart';
 import 'package:the_red_apple/Result_Entry_Screen/ResultEntryScreen.dart';
 import 'package:the_red_apple/Result_Screen/result_screen.dart';
 import 'package:the_red_apple/Students_Screen/students_screen.dart';
+import 'package:the_red_apple/Note_Screen/note_screen.dart';
+import 'package:the_red_apple/Note_View_Screen/note_view_screen.dart';
 
 import '../Attendance_Screen/attendancescreen.dart';
 import '../Attendance_View_Screen/attendance_view.dart';
@@ -119,6 +121,32 @@ class TeacherDashborad extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) => const StudentsScreen()),
+                              );
+                            },
+                          ),
+                          _buildCard(
+                            context,
+                            title: "Write Note",
+                            icon: Icons.note_add,
+                            width: itemWidth,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const NoteScreen()),
+                              );
+                            },
+                          ),
+                          _buildCard(
+                            context,
+                            title: "View Notes",
+                            icon: Icons.note_outlined,
+                            width: itemWidth,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const NoteViewScreen()),
                               );
                             },
                           ),

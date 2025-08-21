@@ -372,6 +372,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../utils/notification_service.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -502,8 +503,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       await attendanceRef.set(attendanceData);
 
+      // Send notification to students
+      await NotificationService.sendAttendanceNotification(
+        className: selectedClass!['className'],
+        medium: selectedMedium!,
+        date: dateStr,
+      );
+
+      // Save notification to Firestore
+      await NotificationService.saveNotificationToFirestore(
+        type: 'attendance',
+        className: selectedClass!['className'],
+        medium: selectedMedium!,
+        title: 'Attendance Updated',
+        body: 'Your attendance for ${selectedClass!['className']} has been marked for $dateStr',
+        data: {
+          'classId': selectedClass!['id'],
+          'date': dateStr,
+        },
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Attendance saved successfully!')),
+        const SnackBar(content: Text('Attendance saved and notification sent to students!')),
       );
 
       if (mounted) Navigator.pop(context);

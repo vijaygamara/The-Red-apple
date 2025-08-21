@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,8 +46,26 @@ class _StudentLoginState extends State<StudentLogin> {
           .get();
 
       if (query.docs.isNotEmpty) {
-        final studentData = query.docs.first.data();
-        saveLogin(phone, studentData);
+        final studentDoc = query.docs.first;
+        final studentData = studentDoc.data();
+        final studentDocId = studentDoc.id;
+
+        // Save login and register device token for push notifications
+        saveLogin(phone, studentData, studentDocId);
+        await _saveFcmToken(studentDocId);
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+          try {
+            await FirebaseFirestore.instance
+                .collection('students')
+                .doc(studentDocId)
+                .set({
+              'fcmTokens': FieldValue.arrayUnion([newToken]),
+              'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          } catch (e) {
+            debugPrint('⚠️ Failed to update refreshed FCM token: $e');
+          }
+        });
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -68,11 +87,41 @@ class _StudentLoginState extends State<StudentLogin> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void saveLogin(String phone, Map<String, dynamic> studentData) async {
+  void saveLogin(String phone, Map<String, dynamic> studentData, String studentDocId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('phone', phone);
+    await prefs.setString('studentDocId', studentDocId);
     debugPrint("✅ Saved phone: $phone");
     debugPrint("✅ Student Data: $studentData");
+  }
+
+  Future<void> _saveFcmToken(String studentDocId) async {
+    try {
+      // Request notification permissions (primarily for iOS)
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      final String? token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('students')
+          .doc(studentDocId)
+          .set({
+        'fcmTokens': FieldValue.arrayUnion([token]),
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('✅ FCM token saved for student: $studentDocId');
+    } catch (e) {
+      debugPrint('⚠️ Failed to save FCM token: $e');
+    }
   }
 
   @override

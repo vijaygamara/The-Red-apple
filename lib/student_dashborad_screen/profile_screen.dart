@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_red_apple/student_dashborad_screen/student_login.dart';
@@ -81,7 +83,31 @@ class ProfileScreen extends StatelessWidget {
   }
   void _logout(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? phone = prefs.getString('phone');
+    final String? studentDocId = prefs.getString('studentDocId');
+
+    try {
+      // Get current device token
+      final String? token = await FirebaseMessaging.instance.getToken();
+
+      if (studentDocId != null && token != null) {
+        // Remove this device token from student's token array
+        await FirebaseFirestore.instance
+            .collection('students')
+            .doc(studentDocId)
+            .update({
+          'fcmTokens': FieldValue.arrayRemove([token]),
+        });
+      }
+
+      // Delete the token from device to force new token next login
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+      // Ignore errors during logout cleanup
+    }
+
     await prefs.remove('phone');
+    await prefs.remove('studentDocId');
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const StudentLogin()),
