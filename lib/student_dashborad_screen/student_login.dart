@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:the_red_apple/student_dashborad_screen/student_dashborad.dart';
-import 'dart:convert';
 
 class StudentLogin extends StatefulWidget {
   const StudentLogin({super.key});
@@ -18,33 +17,6 @@ class _StudentLoginState extends State<StudentLogin> {
   bool _isLoading = false;
 
   final String sharedPassword = "109996";
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLogin(); // 👈 Auto-login check on startup
-  }
-
-  // Agar student already login hai to direct dashboard open karenge
-  Future<void> _checkLogin() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? studentDataStr = prefs.getString("studentData");
-
-    debugPrint("📂 Saved studentData: $studentDataStr");
-
-    if (studentDataStr != null) {
-      Map<String, dynamic> studentData = jsonDecode(studentDataStr);
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StudentDashboard(studentData: studentData),
-          ),
-        );
-      });
-    }
-  }
 
   void _loginStudent() async {
     FocusScope.of(context).unfocus();
@@ -74,15 +46,11 @@ class _StudentLoginState extends State<StudentLogin> {
 
       if (query.docs.isNotEmpty) {
         final studentData = query.docs.first.data();
-
-        await saveLogin(phone, studentData);
-
+        saveLogin(phone, studentData);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => StudentDashboard(
-              studentData: jsonDecode(jsonEncode(_buildSafeStudentData(phone, studentData))),
-            ),
+            builder: (context) => StudentDashboard(studentData: studentData),
           ),
         );
       } else {
@@ -100,24 +68,11 @@ class _StudentLoginState extends State<StudentLogin> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> saveLogin(String phone, Map<String, dynamic> studentData) async {
+  void saveLogin(String phone, Map<String, dynamic> studentData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    final safe = _buildSafeStudentData(phone, studentData);
     await prefs.setString('phone', phone);
-    await prefs.setString('studentData', jsonEncode(safe));
     debugPrint("✅ Saved phone: $phone");
-    debugPrint("✅ Student Data saved (safe)");
-  }
-
-  Map<String, dynamic> _buildSafeStudentData(String phone, Map<String, dynamic> studentData) {
-    return {
-      'Student Name': studentData['Student Name']?.toString() ?? '',
-      'Parents Name': studentData['Parents Name']?.toString() ?? '',
-      'Class Name': studentData['Class Name']?.toString() ?? '',
-      'Medium': studentData['Medium']?.toString() ?? '',
-      'Address': studentData['Address']?.toString() ?? '',
-      'Mobile Number': studentData['Mobile Number']?.toString() ?? phone,
-    };
+    debugPrint("✅ Student Data: $studentData");
   }
 
   @override
@@ -222,14 +177,14 @@ class _StudentLoginState extends State<StudentLogin> {
                           ),
                           child: _isLoading
                               ? const CircularProgressIndicator(
-                              color: Colors.blueAccent)
+                                  color: Colors.blueAccent)
                               : const Text(
-                            "Login",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

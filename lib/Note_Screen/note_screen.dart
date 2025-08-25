@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../utils/notification_service.dart';
 
 class NoteScreen extends StatefulWidget {
   final Map<String, dynamic>? noteData;
@@ -120,26 +121,26 @@ class _NoteScreenState extends State<NoteScreen> {
       }
 
       // 🔔 Send notification
-      // if (_sendNotification) {
-      //   await NotificationService.sendNoteNotification(
-      //     className: _selectedClass!,
-      //     medium: _selectedMedium!,
-      //     noteTitle: _titleController.text.trim(),
-      //     noteContent: _contentController.text.trim(),
-      //   );
-      //
-      //   await NotificationService.saveNotificationToFirestore(
-      //     type: 'note',
-      //     className: _selectedClass!,
-      //     medium: _selectedMedium!,
-      //     title: 'New Note: ${_titleController.text.trim()}',
-      //     body: _contentController.text.trim(),
-      //     data: {
-      //       'noteId': docRef.id,
-      //       'date': dateStr,
-      //     },
-      //   );
-      // }
+      if (_sendNotification) {
+        await NotificationService.sendNoteNotification(
+          className: _selectedClass!,
+          medium: _selectedMedium!,
+          noteTitle: _titleController.text.trim(),
+          noteContent: _contentController.text.trim(),
+        );
+
+        await NotificationService.saveNotificationToFirestore(
+          type: 'note',
+          className: _selectedClass!,
+          medium: _selectedMedium!,
+          title: 'New Note: ${_titleController.text.trim()}',
+          body: _contentController.text.trim(),
+          data: {
+            'noteId': docRef.id,
+            'date': dateStr,
+          },
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

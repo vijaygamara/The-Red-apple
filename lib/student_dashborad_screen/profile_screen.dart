@@ -10,10 +10,6 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    // Extra bottom space so content (especially Logout) doesn't go under bottom bar
-    final extraBottomPadding = media.padding.bottom + 90;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FB),
       appBar: AppBar(
@@ -29,79 +25,68 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + extraBottomPadding),
-          children: [
-            buildBox('🧒 Name', studentData['Student Name']),
-            buildBox('👨‍👩‍👧 Parents Name', studentData['Parents Name']),
-            buildBox('🏫 Class', studentData['Class Name']),
-            buildBox('🗣️ Medium', studentData['Medium']),
-            buildBox('🏠 Address', studentData['Address']),
-            buildBox('📞 Mobile', studentData['Mobile Number']),
-
-            // ✅ Logout Button Only
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFCAF0F8), Color(0xFFE0FBFC)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueAccent.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  )
-                ],
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          buildBox('🧒 Name', studentData['Student Name']),
+          buildBox('👨‍👩‍👧 Parents Name', studentData['Parents Name']),
+          buildBox('🏫 Class', studentData['Class Name']),
+          buildBox('🗣️ Medium', studentData['Medium']),
+          buildBox('🏠 Address', studentData['Address']),
+          buildBox('📞 Mobile', studentData['Mobile Number']),
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFCAF0F8), Color(0xFFE0FBFC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                child: InkWell(
-                  onTap: () {
-                    _logout(context);
-                  },
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.logout, color: Colors.red),
-                      const SizedBox(width: 10),
-                      Text(
-                        "Logout",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blueAccent.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              child: InkWell(
+                onTap: (){
+                  _logout(context);
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.logout),
+                    SizedBox(width: 10,),
+                    Text(
+                      "Logout",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-
-  /// ✅ Fixed logout function
   void _logout(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // sabhi saved keys delete ho jaayenge
-
-    // login page par bhejo aur puri navigation stack clear karo
-    Navigator.pushAndRemoveUntil(
+    await prefs.remove('phone');
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const StudentLogin()),
-          (route) => false,
     );
   }
-
   Widget buildBox(String label, String? value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
