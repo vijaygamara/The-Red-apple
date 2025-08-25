@@ -13,6 +13,34 @@ class ResultEntryScreen extends StatefulWidget {
 }
 
 class _ResultEntryScreenState extends State<ResultEntryScreen> {
+
+  void deleteResult(String docId) async {
+    try {
+      await FirebaseFirestore.instance.collection('results').doc(docId).delete();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Result Deleted Successfully'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete result: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  openEditScreen(String docId, Map<String, dynamic> resultData) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResultScreen(existingData: resultData, docId: docId), // fixed
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,70 +87,118 @@ class _ResultEntryScreenState extends State<ResultEntryScreen> {
             itemBuilder: (context, index) {
               final result = snapshot.data!.docs[index];
               final data = result.data() as Map<String, dynamic>;
+              final id = result.id;
               final images = List<String>.from(data['Images'] ?? []);
               final date = data['Timestamp'] != null
                   ? (data['Timestamp'] as Timestamp).toDate()
                   : null;
 
-              return GestureDetector(
-                onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ResultFulldetails(resultData: data,)));
+              return Dismissible(
+                key: Key(id),
+                background: Container(
+                  padding: const EdgeInsets.only(left: 20),
+                  alignment: Alignment.centerLeft,
+                  color: Colors.blue,
+                  child: const Icon(Icons.edit, color: Colors.white),
+                ),
+                secondaryBackground: Container(
+                  padding: const EdgeInsets.only(right: 20),
+                  alignment: Alignment.centerRight,
+                  color: Colors.red,
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                confirmDismiss: (direction) async {
+                  if (direction == DismissDirection.startToEnd) {
+                    openEditScreen(id, data);
+                    return false;
+                  } else if (direction == DismissDirection.endToStart) {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text("Confirm Delete"),
+                        content: const Text("Are you sure you want to delete this result?"),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text("Delete"),
+                          )
+                        ],
+                      ),
+                    );
+                    return confirm == true;
+                  }
+                  return false;
                 },
-                child: Card(
-                  elevation: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "${data['Medium']} - ${data['Class']}",
-                          style: GoogleFonts.poppins(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        if (date != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              DateFormat('dd MMM yyyy').format(date),
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        if (data['Text'] != null && data['Text'].toString().isNotEmpty)
+                onDismissed: (direction) {
+                  if (direction == DismissDirection.endToStart) {
+                    deleteResult(id);
+                  }
+                },
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ResultFulldetails(resultData: data)),
+                    );
+                  },
+                  child: Card(
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            data['Text'],
-                            style: const TextStyle(fontSize: 16),
+                            "${data['Medium']} - ${data['Class']}",
+                            style: GoogleFonts.poppins(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                        if (images.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 150,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: images.length,
-                              itemBuilder: (context, imgIndex) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      images[imgIndex],
-                                      width: 120,
-                                      height: 150,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                );
-                              },
+                          if (date != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                DateFormat('dd MMM yyyy').format(date),
+                                style: const TextStyle(color: Colors.grey),
+                              ),
                             ),
-                          ),
-                        ]
-                      ],
+                          const SizedBox(height: 8),
+                          if (data['Text'] != null && data['Text'].toString().isNotEmpty)
+                            Text(
+                              data['Text'],
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          if (images.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 150,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: images.length,
+                                itemBuilder: (context, imgIndex) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        images[imgIndex],
+                                        width: 120,
+                                        height: 150,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ]
+                        ],
+                      ),
                     ),
                   ),
                 ),

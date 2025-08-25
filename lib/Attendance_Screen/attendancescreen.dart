@@ -633,7 +633,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         data['Medium'] == selectedMedium;
                   }).toList();
 
-
                   if (students.isEmpty) {
                     return const Center(child: Text('No students in this class'));
                   }
@@ -733,3 +732,4 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
+
