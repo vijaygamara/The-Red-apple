@@ -4,7 +4,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:the_red_apple/Splash_screen/Splash_screen.dart';
 import 'package:the_red_apple/student_dashborad_screen/student_dashborad.dart';
-import 'package:the_red_apple/user_screen/user_screen.dart';
 import 'student_dashborad_screen/student_login.dart';
 import 'utils/firebase_config.dart';
 import 'firebase_options.dart';

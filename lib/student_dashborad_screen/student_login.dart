@@ -15,8 +15,14 @@ class _StudentLoginState extends State<StudentLogin> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isLoading = false;
-
   final String sharedPassword = "109996";
+
+  @override
+  void initState() {
+    super.initState();
+    // Optional: If you want, can also check here for auto-login
+    // But main check is in SplashScreen
+  }
 
   void _loginStudent() async {
     FocusScope.of(context).unfocus();
@@ -46,7 +52,8 @@ class _StudentLoginState extends State<StudentLogin> {
 
       if (query.docs.isNotEmpty) {
         final studentData = query.docs.first.data();
-        saveLogin(phone, studentData);
+        await _saveLogin(phone, studentData);
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -68,8 +75,9 @@ class _StudentLoginState extends State<StudentLogin> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void saveLogin(String phone, Map<String, dynamic> studentData) async {
+  Future<void> _saveLogin(String phone, Map<String, dynamic> studentData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true); // save login status
     await prefs.setString('phone', phone);
     debugPrint("✅ Saved phone: $phone");
     debugPrint("✅ Student Data: $studentData");
@@ -177,14 +185,14 @@ class _StudentLoginState extends State<StudentLogin> {
                           ),
                           child: _isLoading
                               ? const CircularProgressIndicator(
-                                  color: Colors.blueAccent)
+                              color: Colors.blueAccent)
                               : const Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            "Login",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ],

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:the_red_apple/Teacher_Login_Screen/teacherlogin.dart';
+import 'package:the_red_apple/student_dashborad_screen/student_login.dart';
+import 'package:the_red_apple/student_dashborad_screen/student_dashborad.dart';
 import 'package:the_red_apple/utils/AppColors.dart';
-
-import '../student_dashborad_screen/student_login.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,12 +17,41 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const TeacherLogin()),
-      );
-    });
+    _checkLogin();
+  }
+
+  void _checkLogin() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? isLoggedIn = prefs.getBool('isLoggedIn');
+
+    if (isLoggedIn != null && isLoggedIn) {
+      String? phone = prefs.getString('phone');
+      if (phone != null) {
+        final query = await FirebaseFirestore.instance
+            .collection('students')
+            .where('Mobile Number', isEqualTo: phone)
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          final studentData = query.docs.first.data();
+          if (studentData != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentDashboard(studentData: studentData),
+              ),
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Not logged in → show student login screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const StudentLogin()),
+    );
   }
 
   @override
