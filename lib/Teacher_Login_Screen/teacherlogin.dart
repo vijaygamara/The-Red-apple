@@ -9,7 +9,6 @@ class TeacherLogin extends StatefulWidget {
   @override
   State<TeacherLogin> createState() => _TeacherLoginState();
 }
-
 class _TeacherLoginState extends State<TeacherLogin> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();

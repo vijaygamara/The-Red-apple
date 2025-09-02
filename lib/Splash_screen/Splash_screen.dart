@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
     // Not logged in → show student login screen
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const StudentLogin()),
+      MaterialPageRoute(builder: (_) => const TeacherLogin()),
     );
   }
 

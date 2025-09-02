@@ -2,7 +2,7 @@ name: the_red_apple
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.6.2
