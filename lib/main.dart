@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:the_red_apple/Splash_screen/Splash_screen.dart';
+import 'package:the_red_apple/core/notifications/notification_service.dart';
 import 'package:the_red_apple/student_dashborad_screen/student_dashborad.dart';
 import 'student_dashborad_screen/student_login.dart';
 import 'utils/firebase_config.dart';
@@ -21,6 +22,7 @@ void main() async {
   await _initFirebase();
   // Register background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  MultiplNotificationService.getInstance().init();
   runApp(const MyApp());
 }
 
